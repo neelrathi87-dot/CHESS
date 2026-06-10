@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, RefreshCw, LogOut, Copy, Check, MessageCircle, AlertTriangle } from 'lucide-react';
 import GameBoard from './GameBoard';
 import MoveHistory from './MoveHistory';
@@ -79,53 +79,54 @@ export default function GameArena({
     }
   }
 
-  // Smooth clock ticking
-  const [displayClocks, setDisplayClocks] = useState({ w: 0, b: 0 });
+  // Smooth clock ticking - unified for both offline and multiplayer
+  const [displayClocks, setDisplayClocks] = useState({ w: 600000, b: 600000 });
+  const clockRef = useRef({ w: 600000, b: 600000 });
+  const lastTickRef = useRef(Date.now());
 
+  // Sync clock reference when props change
   useEffect(() => {
-    if (isOffline) {
-      if (offlineClocks) {
-        setDisplayClocks(offlineClocks);
-      }
-      return;
+    if (isOffline && offlineClocks) {
+      clockRef.current = { ...offlineClocks };
+      setDisplayClocks({ ...offlineClocks });
+    } else if (gameState?.clocks) {
+      const clocks = {
+        w: gameState.clocks.white ?? gameState.clocks.w ?? 600000,
+        b: gameState.clocks.black ?? gameState.clocks.b ?? 600000
+      };
+      clockRef.current = { ...clocks };
+      setDisplayClocks({ ...clocks });
     }
+  }, [isOffline, offlineClocks, gameState?.clocks]);
 
-    if (!gameState || status !== 'playing') {
-      if (gameState?.clocks) {
-        setDisplayClocks(gameState.clocks);
-      }
-      return;
-    }
+  // Continuous ticking interval - runs every 100ms
+  useEffect(() => {
+    if (status !== 'playing') return;
 
-    // Multiplayer tick
-    setDisplayClocks(gameState.clocks);
+    lastTickRef.current = Date.now();
 
     const interval = setInterval(() => {
-      setDisplayClocks((prev) => {
-        const activeColor = turn === 'w' ? 'white' : 'black';
-        const elapsed = Date.now() - (gameState.lastMoveTimestamp || Date.now());
-        const decremented = Math.max(0, gameState.clocks[activeColor] - elapsed);
+      const now = Date.now();
+      const elapsed = now - lastTickRef.current;
+      lastTickRef.current = now;
 
-        return {
-          w: activeColor === 'white' ? decremented : gameState.clocks.white,
-          b: activeColor === 'black' ? decremented : gameState.clocks.black
-        };
-      });
+      const activeKey = turn; // 'w' or 'b'
+
+      clockRef.current = {
+        ...clockRef.current,
+        [activeKey]: Math.max(0, clockRef.current[activeKey] - elapsed)
+      };
+
+      setDisplayClocks({ ...clockRef.current });
+
+      // For offline mode, also update parent state every ~1 second
+      if (isOffline) {
+        onTickOfflineClock();
+      }
     }, 100);
 
     return () => clearInterval(interval);
-  }, [gameState, turn, status, isOffline, offlineClocks]);
-
-  // Offline timer ticker
-  useEffect(() => {
-    if (!isOffline || status !== 'playing') return;
-
-    const interval = setInterval(() => {
-      onTickOfflineClock();
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isOffline, status, turn]);
+  }, [status, turn, isOffline]);
 
   // Format Milliseconds to MM:SS
   const formatTime = (ms) => {
@@ -194,19 +195,19 @@ export default function GameArena({
   const bottomClock = bottomPlayer.color === 'white' ? displayClocks.w : displayClocks.b;
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-2 py-4">
+    <div className="w-full max-w-6xl mx-auto px-2 h-[100dvh] flex flex-col overflow-hidden">
       {/* Top Banner Controls */}
-      <div className="flex justify-between items-center bg-slate-900/60 p-4 rounded-xl border border-slate-800 mb-6">
-        <div className="flex items-center gap-4">
+      <div className="flex justify-between items-center bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleLeaveClick}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-xs font-semibold"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-[11px] font-semibold"
           >
-            <LogOut className="w-4 h-4 text-rose-400" /> Main Menu
+            <LogOut className="w-3.5 h-3.5 text-rose-400" /> Menu
           </button>
 
           {isMultiplayer && gameState && (
-            <div className="flex items-center gap-2 bg-slate-950/40 px-3 py-2 rounded-lg border border-slate-800 font-mono text-xs">
+            <div className="flex items-center gap-1.5 bg-slate-950/40 px-2 py-1.5 rounded-lg border border-slate-800 font-mono text-[11px]">
               <span className="text-slate-500 font-bold">ROOM:</span>
               <span className="text-teal-400 font-bold tracking-wider">{gameState.id}</span>
               <button
@@ -214,14 +215,14 @@ export default function GameArena({
                 className="text-slate-400 hover:text-slate-200 transition-colors"
                 title="Copy Room Code"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           )}
         </div>
 
         {/* Banner State Message */}
-        <div className={`px-4 py-2 rounded-lg text-sm font-bold text-center flex items-center gap-2 ${
+        <div className={`px-3 py-1.5 rounded-lg text-xs font-bold text-center flex items-center gap-1.5 ${
           ['checkmate', 'resigned', 'timeout'].includes(status)
             ? 'bg-rose-500/10 border border-rose-500/20 text-rose-300'
             : status === 'draw' || status === 'stalemate'
@@ -230,44 +231,45 @@ export default function GameArena({
             ? 'bg-red-500/20 border border-red-500/30 text-red-300 animate-pulse'
             : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
         }`}>
-          {isCheck && <ShieldAlert className="w-4 h-4 text-red-400 animate-bounce" />}
-          {getBannerMessage()}
+          {isCheck && <ShieldAlert className="w-3.5 h-3.5 text-red-400 animate-bounce" />}
+          <span className="hidden sm:inline">{getBannerMessage()}</span>
+          <span className="sm:hidden">{status === 'playing' ? (isCheck ? 'CHECK!' : `${turn === 'w' ? 'W' : 'B'} turn`) : getBannerMessage()}</span>
         </div>
 
         <button
           onClick={() => setBoardOrientation(boardOrientation === 'white' ? 'black' : 'white')}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-xs font-semibold"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-[11px] font-semibold"
           title="Flip Chessboard View"
         >
-          <RefreshCw className="w-4 h-4 text-teal-400" /> Flip Board
+          <RefreshCw className="w-3.5 h-3.5 text-teal-400" /> Flip
         </button>
       </div>
 
       {/* Main Grid: Chessboard vs Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0 py-2">
         {/* Left Side: Chessboard Block */}
-        <div className="col-span-1 lg:col-span-7 flex flex-col gap-4">
+        <div className="col-span-1 lg:col-span-7 flex flex-col gap-1.5 min-h-0">
           
           {/* Opponent Info Plate */}
-          <div className="flex items-center justify-between bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between bg-slate-900/40 px-3 py-2 rounded-xl border border-slate-800/80 shrink-0">
+            <div className="flex items-center gap-2">
               {/* Connection Status Icon */}
-              <div className={`w-3 h-3 rounded-full ${topPlayer.connected ? 'bg-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-rose-500 shadow-md shadow-rose-500/20 animate-pulse'}`} />
-              <div className="bg-slate-950 border border-slate-800 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs uppercase text-indigo-400 select-none">
+              <div className={`w-2.5 h-2.5 rounded-full ${topPlayer.connected ? 'bg-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-rose-500 shadow-md shadow-rose-500/20 animate-pulse'}`} />
+              <div className="bg-slate-950 border border-slate-800 w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[10px] uppercase text-indigo-400 select-none">
                 {topPlayer.name.slice(0, 2)}
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-200 block">{topPlayer.name}</span>
-                <span className="text-[10px] text-slate-500 capitalize">{topPlayer.color}</span>
+                <span className="text-xs font-semibold text-slate-200 block leading-tight">{topPlayer.name}</span>
+                <span className="text-[9px] text-slate-500 capitalize">{topPlayer.color}</span>
               </div>
               {!topPlayer.connected && (
-                <span className="text-[10px] text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded font-medium flex items-center gap-1 animate-pulse ml-2 border border-rose-500/10">
-                  <AlertTriangle className="w-3 h-3" /> Disconnected (reconnect window active)
+                <span className="text-[9px] text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 animate-pulse ml-1 border border-rose-500/10">
+                  <AlertTriangle className="w-2.5 h-2.5" /> Disconnected
                 </span>
               )}
             </div>
             {/* Opponent Clock */}
-            <div className={`font-mono text-xl font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+            <div className={`font-mono text-lg font-bold px-2.5 py-1 rounded-lg border transition-colors ${
               turn === topPlayer.color[0] && status === 'playing'
                 ? 'bg-teal-500/15 border-teal-500/40 text-teal-300 shadow shadow-teal-500/5'
                 : 'bg-slate-950/60 border-slate-800 text-slate-400'
@@ -276,31 +278,33 @@ export default function GameArena({
             </div>
           </div>
 
-          {/* Board Rendering */}
-          <div className="glass p-4 rounded-2xl relative">
-            <GameBoard
-              game={game}
-              onMove={onMove}
-              playerColor={playerColor}
-              boardOrientation={boardOrientation}
-              interactive={status === 'playing'}
-            />
+          {/* Board Rendering - flex-1 to fill available space */}
+          <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0">
+            <div className="w-full max-w-full" style={{ aspectRatio: '1/1', maxHeight: '100%' }}>
+              <GameBoard
+                game={game}
+                onMove={onMove}
+                playerColor={playerColor}
+                boardOrientation={boardOrientation}
+                interactive={status === 'playing'}
+              />
+            </div>
           </div>
 
           {/* Active Player Info Plate */}
-          <div className="flex items-center justify-between bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
-            <div className="flex items-center gap-2.5">
-              <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/20" />
-              <div className="bg-slate-950 border border-slate-800 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs uppercase text-teal-400 select-none">
+          <div className="flex items-center justify-between bg-slate-900/40 px-3 py-2 rounded-xl border border-slate-800/80 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/20" />
+              <div className="bg-slate-950 border border-slate-800 w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[10px] uppercase text-teal-400 select-none">
                 {bottomPlayer.name.slice(0, 2)}
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-200 block">{bottomPlayer.name} (You)</span>
-                <span className="text-[10px] text-slate-500 capitalize">{bottomPlayer.color}</span>
+                <span className="text-xs font-semibold text-slate-200 block leading-tight">{bottomPlayer.name} (You)</span>
+                <span className="text-[9px] text-slate-500 capitalize">{bottomPlayer.color}</span>
               </div>
             </div>
             {/* Player Clock */}
-            <div className={`font-mono text-xl font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+            <div className={`font-mono text-lg font-bold px-2.5 py-1 rounded-lg border transition-colors ${
               turn === bottomPlayer.color[0] && status === 'playing'
                 ? 'bg-teal-500/15 border-teal-500/40 text-teal-300 shadow shadow-teal-500/5'
                 : 'bg-slate-950/60 border-slate-800 text-slate-400'
@@ -312,12 +316,12 @@ export default function GameArena({
         </div>
 
         {/* Right Side: Side Panels and Actions */}
-        <div className="col-span-1 lg:col-span-5 flex flex-col gap-4 h-full">
+        <div className="col-span-1 lg:col-span-5 flex flex-col gap-2 min-h-0 overflow-hidden">
 
           {/* Draw Offer banner inside Game Arena */}
           {isOpponentDrawOffer && status === 'playing' && (
-            <div className="glass border-2 border-amber-500/30 p-4 rounded-xl flex flex-col gap-3 items-center justify-center text-center animate-bounce">
-              <p className="text-sm text-slate-200">
+            <div className="glass border-2 border-amber-500/30 p-3 rounded-xl flex flex-col gap-2 items-center justify-center text-center animate-bounce shrink-0">
+              <p className="text-xs text-slate-200">
                 Opponent has offered a <span className="text-amber-400 font-bold">Draw</span>.
               </p>
               <div className="flex gap-2 w-full">
@@ -338,25 +342,25 @@ export default function GameArena({
           )}
 
           {isMyDrawOffer && status === 'playing' && (
-            <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-center text-xs text-slate-400 italic">
+            <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center text-[10px] text-slate-400 italic shrink-0">
               Draw offer sent. Waiting for opponent response...
             </div>
           )}
 
           {/* Action Buttons Panel */}
           {status === 'playing' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 shrink-0">
               <button
                 onClick={onResign}
-                className="py-3 px-4 rounded-xl font-bold text-xs bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-slate-950 transition-all text-center uppercase tracking-wider shadow"
+                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-slate-950 transition-all text-center uppercase tracking-wider shadow"
               >
-                Resign Game
+                Resign
               </button>
               
               <button
                 onClick={onOfferDraw}
                 disabled={!!drawOfferFrom}
-                className="py-3 px-4 rounded-xl font-bold text-xs bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 disabled:opacity-40 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400 transition-all text-center uppercase tracking-wider shadow"
+                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 disabled:opacity-40 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400 transition-all text-center uppercase tracking-wider shadow"
               >
                 Offer Draw
               </button>
@@ -364,12 +368,12 @@ export default function GameArena({
           )}
 
           {/* Move History Sheet */}
-          <div className="flex-1 min-h-[200px]">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <MoveHistory history={isMultiplayer && gameState ? gameState.history : game.history({ verbose: true })} game={game} />
           </div>
 
           {/* Chat Panel */}
-          <div className="flex-1 min-h-[220px]">
+          <div className="shrink-0 h-[140px] lg:flex-1 lg:h-auto lg:min-h-0 overflow-hidden">
             <ChatBox
               chatHistory={isMultiplayer && gameState ? gameState.chat : []}
               onSendMessage={onSendMessage}
