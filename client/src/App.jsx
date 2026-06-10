@@ -14,8 +14,10 @@ const getSocket = () => {
     const url = import.meta.env.VITE_SERVER_URL || `http://${window.location.hostname}:5000`;
     socketInstance = io(url, {
       autoConnect: false,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000
+      reconnectionAttempts: 10,
+      reconnectionDelay: 3000,
+      timeout: 60000, // 60s timeout for Render cold starts
+      transports: ['websocket', 'polling'] // try websocket first, fallback to polling
     });
   }
   return socketInstance;
@@ -47,6 +49,8 @@ export default function App() {
   const [gameState, setGameState] = useState(null);
   const [reconnectCode, setReconnectCode] = useState(null);
   const [reconnectUsername, setReconnectUsername] = useState('');
+  const [serverConnected, setServerConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   const playerId = getOrCreatePlayerId();
   const socket = getSocket();
@@ -73,6 +77,28 @@ export default function App() {
 
     socket.on('connect', () => {
       console.log('Connected to socket server');
+      setServerConnected(true);
+      setConnecting(false);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from socket server');
+      setServerConnected(false);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.log('Connection error:', err.message);
+      setConnecting(true);
+    });
+
+    socket.io.on('reconnect_attempt', (attempt) => {
+      console.log(`Reconnection attempt ${attempt}...`);
+      setConnecting(true);
+    });
+
+    socket.io.on('reconnect', () => {
+      setServerConnected(true);
+      setConnecting(false);
     });
 
     socket.on('roomCreated', (state) => {
@@ -215,22 +241,57 @@ export default function App() {
     }
   };
 
+  // Helper: ensure socket is connected before emitting
+  const ensureConnected = (callback) => {
+    if (socket.connected) {
+      callback();
+      return;
+    }
+    
+    setConnecting(true);
+    showToast('Connecting to server... please wait (may take up to 50s on first load)', 'warning');
+    
+    // Force reconnect
+    socket.connect();
+    
+    const onConnect = () => {
+      socket.off('connect', onConnect);
+      setConnecting(false);
+      setServerConnected(true);
+      callback();
+    };
+    socket.on('connect', onConnect);
+    
+    // Timeout after 65 seconds
+    setTimeout(() => {
+      socket.off('connect', onConnect);
+      if (!socket.connected) {
+        setConnecting(false);
+        showToast('Could not connect to server. Please try again.', 'error');
+      }
+    }, 65000);
+  };
+
   // Create Multiplayer Room
   const handleCreateRoom = ({ hostColor, username, timeLimit }) => {
-    socket.emit('createRoom', {
-      hostId: playerId,
-      hostColor,
-      username,
-      timeLimit
+    ensureConnected(() => {
+      socket.emit('createRoom', {
+        hostId: playerId,
+        hostColor,
+        username,
+        timeLimit
+      });
     });
   };
 
   // Join Multiplayer Room
   const handleJoinRoom = ({ roomId, username }) => {
-    socket.emit('joinRoom', {
-      roomId,
-      playerId,
-      username
+    ensureConnected(() => {
+      socket.emit('joinRoom', {
+        roomId,
+        playerId,
+        username
+      });
     });
   };
 
@@ -366,7 +427,23 @@ export default function App() {
       {/* Main Container */}
       <main className="flex-1 flex flex-col justify-center py-6">
         {screen === 'lobby' ? (
-          <div className="relative">
+        <div className="relative">
+            {/* Connecting to Server Overlay */}
+            {connecting && (
+              <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-50">
+                <div className="glass p-8 rounded-2xl text-center space-y-4 max-w-sm w-full border border-teal-500/20">
+                  <RefreshCw className="w-10 h-10 text-teal-400 animate-spin mx-auto" />
+                  <h3 className="text-lg font-bold text-slate-100">Connecting to Server...</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    The game server is waking up. This can take up to 50 seconds on the first connection. Please wait!
+                  </p>
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-gradient-to-r from-teal-500 to-emerald-500 h-full rounded-full animate-pulse" style={{width: '60%'}}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Reconnect Banner Overlay */}
             {reconnectCode && (
               <div className="max-w-md mx-auto mb-6 px-4">

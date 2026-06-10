@@ -1,4 +1,4 @@
-// Chess Minimax AI Engine
+// Chess Minimax AI Engine with Variety & Randomization
 
 // Base values of pieces
 const PIECE_VALUES = {
@@ -11,7 +11,6 @@ const PIECE_VALUES = {
 };
 
 // Piece-Square Tables (oriented from White's perspective)
-// 0,0 is top-left (a8), 7,7 is bottom-right (h1)
 const PAWN_PST = [
   [0,  0,  0,  0,  0,  0,  0,  0],
   [50, 50, 50, 50, 50, 50, 50, 50],
@@ -80,7 +79,6 @@ const KING_PST = [
 
 // Return positional bonus based on piece type, color, and square
 function getPositionalValue(pieceType, color, row, col) {
-  // If Black, mirror the row index for evaluation
   const r = color === 'w' ? row : 7 - row;
   const c = col;
 
@@ -95,9 +93,9 @@ function getPositionalValue(pieceType, color, row, col) {
   }
 }
 
-// Evaluate board state
-// Positive score is good for White, negative score is good for Black
-export function evaluateBoard(game) {
+// Evaluate board state with small random noise for variety
+// Positive score is good for White, negative is good for Black
+export function evaluateBoard(game, noise = 0) {
   let score = 0;
   const board = game.board();
 
@@ -120,11 +118,16 @@ export function evaluateBoard(game) {
     }
   }
 
+  // Add small random noise to break ties and create variety
+  if (noise > 0) {
+    score += (Math.random() - 0.5) * noise;
+  }
+
   return score;
 }
 
 // Rate single move for move ordering
-function rateMove(move, game) {
+function rateMove(move) {
   let score = 0;
 
   // Most Valuable Victim - Least Valuable Aggressor (MVV-LVA)
@@ -142,39 +145,41 @@ function rateMove(move, game) {
     score += 60;
   }
 
-  // Moving piece from threatened square could be good, but let's keep it simple
   return score;
 }
 
-// Sort moves to maximize alpha-beta pruning efficiency
-function orderMoves(moves, game) {
-  return moves
-    .map(m => ({ move: m, score: rateMove(m, game) }))
+// Sort moves with slight randomization for variety
+function orderMoves(moves, shuffle = false) {
+  const scored = moves.map(m => ({ move: m, score: rateMove(m) }));
+
+  if (shuffle) {
+    // Add random factor to move ordering for variety in similar positions
+    scored.forEach(s => { s.score += (Math.random() - 0.5) * 30; });
+  }
+
+  return scored
     .sort((a, b) => b.score - a.score)
     .map(x => x.move);
 }
 
-// Minimax with Alpha-Beta Pruning
-function minimax(game, depth, alpha, beta, isMaximizing) {
-  // Base cases
+// Minimax with Alpha-Beta Pruning and noise for variety
+function minimax(game, depth, alpha, beta, isMaximizing, noiseLevel) {
+  // Base case: evaluate with noise
   if (depth === 0) {
-    return { score: evaluateBoard(game) };
+    return { score: evaluateBoard(game, noiseLevel) };
   }
 
   const moves = game.moves({ verbose: true });
 
   if (moves.length === 0) {
     if (game.inCheck()) {
-      // Checkmate: if White's turn (maximizing) is mated, Black wins (-infinity)
-      // if Black's turn (minimizing) is mated, White wins (+infinity)
       return { score: isMaximizing ? -Infinity + (4 - depth) : Infinity - (4 - depth) };
     }
-    // Stalemate / Draw
     return { score: 0 };
   }
 
-  // Order moves for optimal pruning
-  const orderedMoves = orderMoves(moves, game);
+  // Shuffle move ordering slightly at root for variety
+  const orderedMoves = orderMoves(moves, depth >= 2);
 
   let bestMove = null;
 
@@ -182,7 +187,7 @@ function minimax(game, depth, alpha, beta, isMaximizing) {
     let maxScore = -Infinity;
     for (const move of orderedMoves) {
       game.move(move);
-      const { score } = minimax(game, depth - 1, alpha, beta, false);
+      const { score } = minimax(game, depth - 1, alpha, beta, false, noiseLevel);
       game.undo();
 
       if (score > maxScore) {
@@ -191,7 +196,7 @@ function minimax(game, depth, alpha, beta, isMaximizing) {
       }
       alpha = Math.max(alpha, score);
       if (beta <= alpha) {
-        break; // beta cut-off
+        break;
       }
     }
     return { score: maxScore, move: bestMove };
@@ -199,7 +204,7 @@ function minimax(game, depth, alpha, beta, isMaximizing) {
     let minScore = Infinity;
     for (const move of orderedMoves) {
       game.move(move);
-      const { score } = minimax(game, depth - 1, alpha, beta, true);
+      const { score } = minimax(game, depth - 1, alpha, beta, true, noiseLevel);
       game.undo();
 
       if (score < minScore) {
@@ -208,18 +213,45 @@ function minimax(game, depth, alpha, beta, isMaximizing) {
       }
       beta = Math.min(beta, score);
       if (beta <= alpha) {
-        break; // alpha cut-off
+        break;
       }
     }
     return { score: minScore, move: bestMove };
   }
 }
 
+// Collect top N moves by score for random selection
+function getTopMoves(game, depth, isMaximizing, noiseLevel, topN = 3) {
+  const moves = game.moves({ verbose: true });
+  if (moves.length === 0) return [];
+
+  const scored = [];
+
+  for (const move of moves) {
+    game.move(move);
+    const { score } = minimax(game, depth - 1, -Infinity, Infinity, !isMaximizing, noiseLevel);
+    game.undo();
+    scored.push({ move, score });
+  }
+
+  // Sort: best first depending on side
+  if (isMaximizing) {
+    scored.sort((a, b) => b.score - a.score);
+  } else {
+    scored.sort((a, b) => a.score - b.score);
+  }
+
+  // Return top N moves
+  return scored.slice(0, Math.min(topN, scored.length));
+}
+
 // Primary entry point to get computer's move
-// Returns move object { from, to, promotion }
 export function getComputerMove(game, difficulty) {
   const moves = game.moves({ verbose: true });
   if (moves.length === 0) return null;
+
+  const moveNumber = game.history().length;
+  const isMaximizing = game.turn() === 'w';
 
   // Easy Difficulty: Pure Random Moves
   if (difficulty === 'easy') {
@@ -227,21 +259,41 @@ export function getComputerMove(game, difficulty) {
     return moves[randomIndex];
   }
 
-  // Medium Difficulty: Minimax Depth 2
+  // Medium Difficulty: Minimax Depth 2, pick randomly from top 3 moves
   if (difficulty === 'medium') {
-    const isMaximizing = game.turn() === 'w';
-    const result = minimax(game, 2, -Infinity, Infinity, isMaximizing);
-    return result.move || moves[0];
+    // During opening (first 10 moves), add more randomness
+    const noiseLevel = moveNumber < 10 ? 40 : 15;
+    const topN = moveNumber < 10 ? 4 : 3;
+
+    const topMoves = getTopMoves(game, 2, isMaximizing, noiseLevel, topN);
+    if (topMoves.length === 0) return moves[0];
+
+    // Pick randomly from the top moves
+    const pick = Math.floor(Math.random() * topMoves.length);
+    return topMoves[pick].move;
   }
 
-  // Hard Difficulty: Minimax Depth 4 with Alpha-Beta Pruning
+  // Hard Difficulty: Minimax Depth 4, pick randomly from top 2-3 moves
   if (difficulty === 'hard') {
-    const isMaximizing = game.turn() === 'w';
-    // Depth 4 is highly tactical and runs very quickly with move ordering
-    const result = minimax(game, 4, -Infinity, Infinity, isMaximizing);
-    return result.move || moves[0];
+    // Less noise for hard, but still some for variety
+    const noiseLevel = moveNumber < 8 ? 25 : 8;
+    const topN = moveNumber < 8 ? 3 : 2;
+
+    const topMoves = getTopMoves(game, 4, isMaximizing, noiseLevel, topN);
+    if (topMoves.length === 0) return moves[0];
+
+    // Weighted random: favor the best move but sometimes pick alternatives
+    const weights = topMoves.map((_, i) => Math.pow(0.5, i)); // 1, 0.5, 0.25...
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * totalWeight;
+    for (let i = 0; i < topMoves.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return topMoves[i].move;
+    }
+
+    return topMoves[0].move;
   }
 
-  // Fallback to random
+  // Fallback
   return moves[0];
 }
