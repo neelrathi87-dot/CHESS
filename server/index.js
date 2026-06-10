@@ -1,0 +1,208 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const roomManager = require('./roomManager');
+
+const app = express();
+app.use(cors({ origin: '*' }));
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+// Basic check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', activeRooms: roomManager.rooms.size });
+});
+
+// Socket connection
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  // 1. Create Room
+  socket.on('createRoom', ({ hostId, hostColor, username, timeLimit }) => {
+    try {
+      const room = roomManager.createRoom(hostId, socket.id, hostColor, username, timeLimit || 10);
+      socket.join(room.id);
+      
+      const state = roomManager.getRoomState(room.id);
+      socket.emit('roomCreated', state);
+      console.log(`Room created: ${room.id} by player ${hostId}`);
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to create room.' });
+    }
+  });
+
+  // 2. Join Room
+  socket.on('joinRoom', ({ roomId, playerId, username }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const result = roomManager.joinRoom(upperRoomId, playerId, socket.id, username);
+
+      if (result.error) {
+        socket.emit('errorMsg', { message: result.error });
+        return;
+      }
+
+      socket.join(upperRoomId);
+      
+      // Update room state for everyone in the room
+      const state = roomManager.getRoomState(upperRoomId);
+      io.to(upperRoomId).emit('gameState', state);
+      
+      // Notify client specific connection color details (in case of reconnection)
+      socket.emit('joinedSuccess', { color: result.color || null });
+
+      console.log(`Player ${playerId} joined Room ${upperRoomId}`);
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to join room.' });
+    }
+  });
+
+  // 3. Make Move
+  socket.on('makeMove', ({ roomId, playerId, move }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const result = roomManager.makeMove(upperRoomId, playerId, move);
+
+      if (result.error) {
+        socket.emit('errorMsg', { message: result.error });
+        return;
+      }
+
+      const state = roomManager.getRoomState(upperRoomId);
+      io.to(upperRoomId).emit('gameState', state);
+
+      if (result.gameOver) {
+        io.to(upperRoomId).emit('gameOver', state);
+      }
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to complete move.' });
+    }
+  });
+
+  // 4. Offer Draw
+  socket.on('offerDraw', ({ roomId, playerId }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const result = roomManager.offerDraw(upperRoomId, playerId);
+
+      if (result.error) {
+        socket.emit('errorMsg', { message: result.error });
+        return;
+      }
+
+      const state = roomManager.getRoomState(upperRoomId);
+      io.to(upperRoomId).emit('gameState', state);
+      // Explicitly notify players of the draw offer
+      socket.to(upperRoomId).emit('drawOffered', { from: playerId });
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to offer draw.' });
+    }
+  });
+
+  // 5. Respond Draw
+  socket.on('respondDraw', ({ roomId, playerId, accept }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const result = roomManager.handleDrawResponse(upperRoomId, playerId, accept);
+
+      if (result.error) {
+        socket.emit('errorMsg', { message: result.error });
+        return;
+      }
+
+      const state = roomManager.getRoomState(upperRoomId);
+      io.to(upperRoomId).emit('gameState', state);
+
+      if (result.gameOver) {
+        io.to(upperRoomId).emit('gameOver', state);
+      } else if (result.declined) {
+        socket.to(upperRoomId).emit('drawDeclined', { from: playerId });
+      }
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to process draw response.' });
+    }
+  });
+
+  // 6. Resign
+  socket.on('resign', ({ roomId, playerId }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const result = roomManager.resign(upperRoomId, playerId);
+
+      if (result.error) {
+        socket.emit('errorMsg', { message: result.error });
+        return;
+      }
+
+      const state = roomManager.getRoomState(upperRoomId);
+      io.to(upperRoomId).emit('gameState', state);
+      io.to(upperRoomId).emit('gameOver', state);
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to resign.' });
+    }
+  });
+
+  // 7. Send Chat Message
+  socket.on('sendChat', ({ roomId, playerId, text }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const message = roomManager.addChatMessage(upperRoomId, playerId, text);
+
+      if (message) {
+        io.to(upperRoomId).emit('chatMessage', message);
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+    }
+  });
+
+  // 8. Disconnect
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+    
+    roomManager.handleDisconnect(socket.id, (roomId, action, data) => {
+      if (action === 'room_closed') {
+        io.to(roomId).emit('errorMsg', { message: 'Host left the lobby. Room closed.' });
+      } else if (action === 'opponent_left_lobby') {
+        const state = roomManager.getRoomState(roomId);
+        io.to(roomId).emit('gameState', state);
+      } else if (action === 'player_disconnected') {
+        io.to(roomId).emit('playerDisconnected', data);
+      } else if (action === 'game_over') {
+        io.to(roomId).emit('gameState', data);
+        io.to(roomId).emit('gameOver', data);
+        roomManager.deleteRoom(roomId);
+      }
+    });
+  });
+});
+
+// Background task: Server clock validation interval (every 1 second)
+setInterval(() => {
+  for (const [roomId, room] of roomManager.rooms.entries()) {
+    if (room.status === 'playing') {
+      const oldStatus = room.status;
+      roomManager.updateClocks(room);
+
+      // If state changed to timeout
+      if (room.status === 'timeout') {
+        const state = roomManager.getRoomState(roomId);
+        io.to(roomId).emit('gameState', state);
+        io.to(roomId).emit('gameOver', state);
+        roomManager.deleteRoom(roomId);
+      }
+    }
+  }
+}, 1000);
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Chess server running on port ${PORT}`);
+});

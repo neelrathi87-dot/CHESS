@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden;
+  }
+}
+
+/* Custom Scrollbar for chat and history lists */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.8);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 1);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Pulse animation for king in check */
+@keyframes check-pulse {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.4);
+    box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.8);
+    box-shadow: inset 0 0 25px rgba(239, 68, 68, 1);
+  }
+}
+
+.check-highlight {
+  animation: check-pulse 1.2s infinite;
+}
+
+/* Highlight for last move made */
+.last-move-highlight {
+  background-color: rgba(234, 179, 8, 0.35); /* soft yellow-gold */
+}
+
+/* Custom styles for chess.js highlighted legal moves */
+.legal-dot {
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.45); /* soft emerald green dot */
+}
+
+.legal-ring {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  border: 4px solid rgba(16, 185, 129, 0.6);
+  background-color: transparent;
+}
