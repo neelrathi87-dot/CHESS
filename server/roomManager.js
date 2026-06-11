@@ -450,12 +450,32 @@ class RoomManager {
   findMatch() {
     if (this.matchQueue.length < 2) return null;
 
-    // Match first two players in the queue (FIFO)
-    const player1 = this.matchQueue.shift();
-    const player2 = this.matchQueue.shift();
+    let player1Index = -1;
+    let player2Index = -1;
 
-    // Use the average time limit
-    const timeLimit = Math.round((player1.timeLimit + player2.timeLimit) / 2);
+    // Find the first pair of players with the SAME time limit
+    for (let i = 0; i < this.matchQueue.length; i++) {
+      for (let j = i + 1; j < this.matchQueue.length; j++) {
+        if (this.matchQueue[i].timeLimit === this.matchQueue[j].timeLimit) {
+          player1Index = i;
+          player2Index = j;
+          break;
+        }
+      }
+      if (player1Index !== -1) break;
+    }
+
+    // No matching pair found yet
+    if (player1Index === -1) return null;
+
+    const player1 = this.matchQueue[player1Index];
+    const player2 = this.matchQueue[player2Index];
+
+    // Remove them from the queue (remove the higher index first to avoid shifting)
+    this.matchQueue.splice(player2Index, 1);
+    this.matchQueue.splice(player1Index, 1);
+
+    const timeLimit = player1.timeLimit;
 
     // Randomly assign colors
     const p1IsWhite = Math.random() < 0.5;
