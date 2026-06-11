@@ -44,6 +44,8 @@ export default function App() {
   const [offlineDifficulty, setOfflineDifficulty] = useState('medium');
   const [offlineClocks, setOfflineClocks] = useState({ w: 600000, b: 600000 }); // default 10min
   const [aiIsThinking, setAiIsThinking] = useState(false);
+  const [isLearnMode, setIsLearnMode] = useState(false);
+  const [lastMove, setLastMove] = useState(null);
 
   // Multiplayer online game states
   const [gameState, setGameState] = useState(null);
@@ -254,6 +256,7 @@ export default function App() {
         const result = newGame.move(moveData);
         if (result) {
           setGame(newGame);
+          setLastMove(result);
         }
       } catch (err) {
         showToast('Invalid move', 'error');
@@ -339,6 +342,40 @@ export default function App() {
 
     // Clear any previous online reconnection
     sessionStorage.removeItem('chess_room_id');
+    setIsLearnMode(false);
+    setLastMove(null);
+  };
+
+  // Start Learn Mode — Easy AI with assistant
+  const handleStartLearnMode = () => {
+    setPlayerColor('white');
+    setOfflineDifficulty('easy');
+    setOfflineClocks({ w: 9999000, b: 9999000 }); // Effectively unlimited time
+    setGame(new Chess());
+    setIsOffline(true);
+    setIsLearnMode(true);
+    setLastMove(null);
+    setScreen('arena');
+    setAiIsThinking(false);
+    sessionStorage.removeItem('chess_room_id');
+  };
+
+  // Undo Move (Learn Mode only) — undoes both AI move and player move
+  const handleUndo = () => {
+    if (!isLearnMode || !isOffline) return;
+    const newGame = new Chess(game.fen());
+    
+    // Undo AI's last move
+    const undone1 = newGame.undo();
+    // Undo player's last move
+    const undone2 = newGame.undo();
+    
+    if (undone1 || undone2) {
+      setGame(newGame);
+      setAiIsThinking(false);
+      setLastMove(null);
+      showToast('Move undone! Try a different approach.', 'info');
+    }
   };
 
   // Find Random Match (Matchmaking)
@@ -514,6 +551,7 @@ export default function App() {
               onFindMatch={handleFindMatch}
               onCancelSearch={handleCancelSearch}
               isSearching={isSearching}
+              onStartLearnMode={handleStartLearnMode}
             />
           </div>
         ) : (
@@ -531,6 +569,9 @@ export default function App() {
             offlineDifficulty={offlineDifficulty}
             offlineClocks={offlineClocks}
             onTickOfflineClock={handleTickOfflineClock}
+            isLearnMode={isLearnMode}
+            onUndo={handleUndo}
+            lastMove={lastMove}
           />
         )}
       </main>

@@ -3,6 +3,7 @@ import { ShieldAlert, RefreshCw, LogOut, Copy, Check, MessageCircle, AlertTriang
 import GameBoard from './GameBoard';
 import MoveHistory from './MoveHistory';
 import ChatBox from './ChatBox';
+import LearnAssistant from './LearnAssistant';
 
 export default function GameArena({
   game,
@@ -17,7 +18,10 @@ export default function GameArena({
   isOffline, // boolean
   offlineDifficulty, // 'easy'|'medium'|'hard'
   offlineClocks, // { w, b } for offline mode
-  onTickOfflineClock // callback to decrement clock
+  onTickOfflineClock, // callback to decrement clock
+  isLearnMode, // boolean - learn mode active
+  onUndo, // callback to undo last move
+  lastMove // last move object for evaluation
 }) {
   const [boardOrientation, setBoardOrientation] = useState(playerColor === 'black' ? 'black' : 'white');
   const [copied, setCopied] = useState(false);
@@ -82,11 +86,12 @@ export default function GameArena({
     }
   } else {
     // Offline AI
+    const aiName = isLearnMode ? '🎓 Coach AI' : `Computer (${offlineDifficulty})`;
     if (playerColor === 'black') {
-      topPlayer = { name: `Computer (${offlineDifficulty})`, color: 'white', connected: true };
+      topPlayer = { name: aiName, color: 'white', connected: true };
       bottomPlayer = { name: 'You', color: 'black', connected: true };
     } else {
-      topPlayer = { name: `Computer (${offlineDifficulty})`, color: 'black', connected: true };
+      topPlayer = { name: aiName, color: 'black', connected: true };
       bottomPlayer = { name: 'You', color: 'white', connected: true };
     }
   }
@@ -404,14 +409,25 @@ export default function GameArena({
             <MoveHistory history={isMultiplayer && gameState ? gameState.history : game.history({ verbose: true })} game={game} />
           </div>
 
-          {/* Chat Panel — stays active after game for tips exchange */}
-          <div className="shrink-0 h-[140px] lg:flex-1 lg:h-auto lg:min-h-0 overflow-hidden">
-            <ChatBox
-              chatHistory={isMultiplayer && gameState ? gameState.chat : []}
-              onSendMessage={onSendMessage}
-              active={isMultiplayer}
-              gameOver={isGameOver}
-            />
+          {/* Learn Assistant / Chat Panel */}
+          <div className="shrink-0 h-[180px] lg:flex-1 lg:h-auto lg:min-h-0 overflow-hidden">
+            {isLearnMode ? (
+              <LearnAssistant
+                game={game}
+                playerColor={playerColor}
+                onUndo={onUndo}
+                lastMove={lastMove}
+                canUndo={game.history().length >= 2}
+                moveHistory={game.history()}
+              />
+            ) : (
+              <ChatBox
+                chatHistory={isMultiplayer && gameState ? gameState.chat : []}
+                onSendMessage={onSendMessage}
+                active={isMultiplayer}
+                gameOver={isGameOver}
+              />
+            )}
           </div>
 
         </div>

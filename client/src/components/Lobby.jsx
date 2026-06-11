@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Monitor, Users, Globe, ShieldAlert, Swords, Plus, Key, Search, X } from 'lucide-react';
+import { Monitor, Users, Globe, ShieldAlert, Swords, Plus, Key, Search, X, GraduationCap } from 'lucide-react';
 
-export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching }) {
-  const [mode, setMode] = useState('computer'); // 'computer' | 'multiplayer' | 'online'
+export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode }) {
+  const [mode, setMode] = useState('learn'); // 'learn' | 'computer' | 'online' | 'multiplayer'
   
   // Computer options
   const [aiDifficulty, setAiDifficulty] = useState('medium');
@@ -48,38 +48,32 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
         <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-500 to-indigo-500 bg-clip-text text-transparent flex items-center justify-center gap-3">
           <Swords className="w-12 h-12 text-teal-400 animate-pulse" /> ANTIGRAVITY CHESS
         </h1>
-        <p className="text-slate-400 mt-2 text-lg">Play against AI, find random opponents, or challenge friends</p>
+        <p className="text-slate-400 mt-2 text-lg">Learn, practice, and play chess with anyone in the world</p>
       </div>
 
-      {/* Mode Toggle Buttons - 3 tabs */}
+      {/* Mode Toggle Buttons - 4 tabs */}
       <div className="flex bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-full max-w-lg mb-8">
         <button
+          onClick={() => setMode('learn')}
+          className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'learn' ? 'bg-gradient-to-r from-emerald-500 to-lime-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <GraduationCap className="w-4 h-4" /> Learn
+        </button>
+        <button
           onClick={() => setMode('computer')}
-          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all text-sm ${
-            mode === 'computer'
-              ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
+          className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'computer' ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <Monitor className="w-4 h-4" /> vs AI
         </button>
         <button
           onClick={() => setMode('online')}
-          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all text-sm ${
-            mode === 'online'
-              ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
+          className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'online' ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <Globe className="w-4 h-4" /> Play Online
         </button>
         <button
           onClick={() => setMode('multiplayer')}
-          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all text-sm ${
-            mode === 'multiplayer'
-              ? 'bg-gradient-to-r from-teal-500 to-indigo-500 text-white shadow-lg'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
+          className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'multiplayer' ? 'bg-gradient-to-r from-teal-500 to-indigo-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <Users className="w-4 h-4" /> Private
         </button>
@@ -88,12 +82,41 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
       {/* Configuration Panel */}
       <div className="w-full max-w-md glass p-8 rounded-2xl shadow-2xl relative overflow-hidden">
         <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${
+          mode === 'learn' ? 'from-emerald-500 via-lime-500 to-teal-500' :
           mode === 'computer' ? 'from-emerald-500 via-teal-500 to-indigo-500' :
           mode === 'online' ? 'from-violet-500 via-fuchsia-500 to-pink-500' :
           'from-teal-500 via-indigo-500 to-violet-500'
         }`}></div>
 
-        {mode === 'computer' ? (
+        {mode === 'learn' ? (
+          /* LEARN MODE PANEL */
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-lime-400" /> Learn to Play Chess
+            </h2>
+            <p className="text-sm text-slate-400 -mt-3">
+              Play with an AI assistant that guides you, evaluates your moves, and teaches you strategies.
+            </p>
+
+            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-4 space-y-2">
+              <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">What you'll get:</h3>
+              <ul className="space-y-1.5 text-xs text-slate-400">
+                <li className="flex items-start gap-2"><span className="text-emerald-500">🤖</span> AI assistant that evaluates every move</li>
+                <li className="flex items-start gap-2"><span className="text-emerald-500">↩️</span> Undo moves to try different strategies</li>
+                <li className="flex items-start gap-2"><span className="text-emerald-500">📚</span> Learn about each piece and how it moves</li>
+                <li className="flex items-start gap-2"><span className="text-emerald-500">⚠️</span> Threat warnings when your pieces are attacked</li>
+                <li className="flex items-start gap-2"><span className="text-emerald-500">💡</span> Strategy tips adapted to your position</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => onStartLearnMode()}
+              className="w-full py-4 mt-2 bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-400 hover:to-lime-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/10 hover:shadow-emerald-400/20 flex items-center justify-center gap-2 transform hover:-translate-y-0.5 transition-all text-lg"
+            >
+              <GraduationCap className="w-6 h-6" /> Start Learning
+            </button>
+          </div>
+        ) : mode === 'computer' ? (
           /* VS COMPUTER PANEL */
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
