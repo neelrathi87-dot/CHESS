@@ -390,6 +390,7 @@ class RoomManager {
       id: room.id,
       status: room.status,
       fen: room.game.fen(),
+      pgn: room.game.pgn(),
       turn: room.game.turn(),
       isCheck: room.game.inCheck(),
       history: room.game.history({ verbose: true }),

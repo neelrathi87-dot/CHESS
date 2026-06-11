@@ -102,14 +102,18 @@ export default function App() {
       setConnecting(false);
     });
 
-    socket.on('roomCreated', ({ roomId, color, state }) => {
+    socket.on('roomCreated', (state) => {
       setGameState(state);
-      setPlayerColor(color);
-      setGame(new Chess(state.fen));
+      const hostColor = state.players.white?.id === playerId ? 'white' : 'black';
+      setPlayerColor(hostColor);
+      const newGame = new Chess();
+      newGame.loadPgn(state.pgn || '');
+      setGame(newGame);
       setIsOffline(false);
       setScreen('arena');
-      sessionStorage.setItem('chess_room_id', roomId);
-      setReconnectCode(roomId);
+      sessionStorage.setItem('chess_room_id', state.id);
+      sessionStorage.setItem('chess_username', state.players[hostColor]?.username || '');
+      setReconnectCode(state.id);
     });
 
     socket.on('gameState', (state) => {
@@ -117,6 +121,19 @@ export default function App() {
       const newGame = new Chess();
       newGame.loadPgn(state.pgn || '');
       setGame(newGame);
+
+      // Transition screen and save roomId (particularly important for the joining guest player)
+      setIsOffline(false);
+      setScreen('arena');
+      sessionStorage.setItem('chess_room_id', state.id);
+
+      if (state.players.white?.id === playerId) {
+        setPlayerColor('white');
+      } else if (state.players.black?.id === playerId) {
+        setPlayerColor('black');
+      } else {
+        setPlayerColor('spectator');
+      }
     });
 
     socket.on('joinedSuccess', ({ color }) => {
