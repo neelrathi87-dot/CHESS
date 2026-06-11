@@ -9,13 +9,13 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
   const [aiColor, setAiColor] = useState('white');
   
   // Multiplayer options
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('chess_username') || '');
   const [mpColor, setMpColor] = useState('random');
   const [timeLimit, setTimeLimit] = useState(10); // in minutes
   const [roomCodeInput, setRoomCodeInput] = useState('');
 
   // Online matchmaking options
-  const [onlineUsername, setOnlineUsername] = useState('');
+  const [onlineUsername, setOnlineUsername] = useState(() => localStorage.getItem('chess_username') || '');
   const [onlineTimeLimit, setOnlineTimeLimit] = useState(10);
 
   const handleStartComputer = () => {
@@ -24,17 +24,21 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
 
   const handleCreateRoom = (e) => {
     e.preventDefault();
+    localStorage.setItem('chess_username', username);
     onCreateRoom({ hostColor: mpColor, username, timeLimit });
   };
 
   const handleJoinRoom = (e) => {
     e.preventDefault();
     if (!roomCodeInput.trim()) return;
+    localStorage.setItem('chess_username', username);
     onJoinRoom({ roomId: roomCodeInput.trim().toUpperCase(), username });
   };
 
   const handleFindMatch = () => {
-    onFindMatch({ username: onlineUsername || 'Player', timeLimit: onlineTimeLimit });
+    const finalName = onlineUsername || 'Player';
+    localStorage.setItem('chess_username', finalName);
+    onFindMatch({ username: finalName, timeLimit: onlineTimeLimit });
   };
 
   const handleCancelSearch = () => {

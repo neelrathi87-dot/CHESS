@@ -66,7 +66,7 @@ export default function App() {
   // Check for reconnection room codes on mount
   useEffect(() => {
     const savedRoomId = sessionStorage.getItem('chess_room_id');
-    const savedUsername = sessionStorage.getItem('chess_username') || '';
+    const savedUsername = localStorage.getItem('chess_username') || '';
     if (savedRoomId) {
       setTimeout(() => {
         setReconnectCode(savedRoomId);
@@ -111,7 +111,7 @@ export default function App() {
       setIsOffline(false);
       setScreen('arena');
       sessionStorage.setItem('chess_room_id', state.id);
-      sessionStorage.setItem('chess_username', state.players[hostColor]?.username || '');
+      localStorage.setItem('chess_username', state.players[hostColor]?.username || '');
       setReconnectCode(state.id);
     });
 
