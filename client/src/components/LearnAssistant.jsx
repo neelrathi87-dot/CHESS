@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { GraduationCap, BookOpen, Lightbulb, Undo2, ChevronRight, ChevronLeft, Shield, Volume2, VolumeX } from 'lucide-react';
-import { PIECE_INFO, getPositionTips, detectThreats, evaluateMove, CHESS_PRINCIPLES } from '../utils/learnHelper';
+import { PIECE_INFO, getPositionTips, detectThreats, evaluateMove, CHESS_PRINCIPLES, analyzePieceMoves } from '../utils/learnHelper';
 
-export default function LearnAssistant({ game, playerColor, onUndo, canUndo, moveHistory }) {
+export default function LearnAssistant({ game, playerColor, onUndo, canUndo, moveHistory, selectedSquare }) {
   const [tab, setTab] = useState('assistant'); // 'assistant' | 'pieces' | 'principles'
   const [selectedPiece, setSelectedPiece] = useState(null);
   const [principleIdx, setPrincipleIdx] = useState(0);
@@ -98,6 +98,33 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
     }
     prevMsgCountRef.current = assistantMessages.length;
   }, [assistantMessages]);
+
+  // Handle piece selection for coaching
+  useEffect(() => {
+    if (!selectedSquare || !game) return;
+    
+    const piece = game.get(selectedSquare);
+    const myColor = playerColor === 'white' ? 'w' : 'b';
+    
+    // Only coach on the player's own pieces
+    if (piece && piece.color === myColor) {
+      try {
+        const analysis = analyzePieceMoves(game, selectedSquare);
+        if (analysis) {
+          // Add coaching message
+          setTimeout(() => {
+            setAssistantMessages(prev => [...prev, {
+              type: 'tip',
+              text: analysis.suggestion,
+              emoji: '💡'
+            }]);
+          }, 0);
+        }
+      } catch (e) {
+        console.error("Coaching evaluation error:", e);
+      }
+    }
+  }, [selectedSquare, game, playerColor]);
 
   // Track move count for the effect
   const moveCount = moveHistory ? moveHistory.length : 0;

@@ -188,6 +188,91 @@ export function evaluateMove(game, move) {
   return { quality, emoji, color, message, scoreDelta, bestMove, diffFromBest };
 }
 
+// ==================== PIECE MOVE ANALYSIS (for coaching) ====================
+export function analyzePieceMoves(game, square) {
+  const piece = game.get(square);
+  if (!piece) return null;
+
+  const pieceNames = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' };
+  const pieceName = pieceNames[piece.type] || piece.type;
+  const isWhite = piece.color === 'w';
+  const scoreBefore = evaluateBoard(game, 0);
+
+  // Get all legal moves for this specific piece
+  const moves = game.moves({ square, verbose: true });
+  if (moves.length === 0) {
+    return { pieceName, square, moves: [], bestMove: null, suggestion: `Your ${pieceName} on ${square} has no legal moves right now.` };
+  }
+
+  // Evaluate each move
+  const evaluated = moves.map(m => {
+    game.move(m);
+    const scoreAfter = evaluateBoard(game, 0);
+    const inCheck = game.inCheck();
+    game.undo();
+    const delta = isWhite ? (scoreAfter - scoreBefore) : (scoreBefore - scoreAfter);
+
+    // Build a reason string
+    let reason = '';
+    if (m.captured) {
+      const capName = pieceNames[m.captured] || m.captured;
+      reason = `captures ${capName}`;
+    }
+    if (inCheck) {
+      reason = reason ? `${reason} and gives check` : 'gives check';
+    }
+    if (m.san.includes('O-O')) {
+      reason = 'castles to safety';
+    }
+
+    // Positional reasoning
+    if (!reason) {
+      const centerSquares = ['d4', 'd5', 'e4', 'e5'];
+      const nearCenter = ['c3', 'c4', 'c5', 'c6', 'd3', 'd6', 'e3', 'e6', 'f3', 'f4', 'f5', 'f6'];
+      if (centerSquares.includes(m.to)) {
+        reason = 'controls the center';
+      } else if (nearCenter.includes(m.to)) {
+        reason = 'develops toward the center';
+      } else if (m.to[0] === 'a' || m.to[0] === 'h') {
+        reason = 'moves to the edge (usually less active)';
+      } else {
+        reason = 'repositions the piece';
+      }
+    }
+
+    // Add delta-based quality
+    let quality;
+    if (delta >= 50) quality = 'strong';
+    else if (delta >= 0) quality = 'solid';
+    else if (delta >= -50) quality = 'slightly weakening';
+    else quality = 'weakening';
+
+    return { san: m.san, from: m.from, to: m.to, delta, reason, quality, captured: m.captured, inCheck };
+  });
+
+  // Sort by evaluation (best first)
+  evaluated.sort((a, b) => b.delta - a.delta);
+
+  const best = evaluated[0];
+  const worst = evaluated[evaluated.length - 1];
+
+  // Build suggestion text
+  let suggestion;
+  if (evaluated.length === 1) {
+    suggestion = `Your ${pieceName} on ${square} can only move to ${best.san} — ${best.reason}. This is a ${best.quality} move.`;
+  } else {
+    suggestion = `Best move: ${best.san} — ${best.reason} (${best.quality}). `;
+    if (evaluated.length > 2) {
+      suggestion += `You have ${evaluated.length} options. `;
+    }
+    if (worst.quality === 'weakening' || worst.quality === 'slightly weakening') {
+      suggestion += `Avoid ${worst.san} — ${worst.reason} (${worst.quality}).`;
+    }
+  }
+
+  return { pieceName, square, moves: evaluated, bestMove: best, suggestion };
+}
+
 // ==================== POSITION TIPS ====================
 export function getPositionTips(game, playerColor) {
   const tips = [];

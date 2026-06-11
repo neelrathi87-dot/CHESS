@@ -28,7 +28,12 @@ export default function GameArena({
   const [showConfirmLeave, setShowConfirmLeave] = useState(false);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
   const [showDrawConfirm, setShowDrawConfirm] = useState(false);
+  const [selectedSquare, setSelectedSquare] = useState(null);
   const prevStatusRef = useRef('playing');
+
+  const handlePieceSelect = (square) => {
+    setSelectedSquare(square);
+  };
 
   // Sync orientation with assigned color when color changes
   useEffect(() => {
@@ -308,6 +313,7 @@ export default function GameArena({
               <GameBoard
                 game={game}
                 onMove={onMove}
+                onPieceSelect={handlePieceSelect}
                 playerColor={playerColor}
                 boardOrientation={boardOrientation}
                 interactive={status === 'playing'}
@@ -426,6 +432,7 @@ export default function GameArena({
                 lastMove={lastMove}
                 canUndo={game.history().length >= 2}
                 moveHistory={game.history()}
+                selectedSquare={selectedSquare}
               />
             ) : (
               <ChatBox

@@ -4,6 +4,7 @@ import { Chessboard } from 'react-chessboard';
 export default function GameBoard({
   game,
   onMove,
+  onPieceSelect, // optional callback: (square, piece) => void — used by Learn Mode
   playerColor, // 'white', 'black', or 'spectator'
   boardOrientation, // 'white' or 'black'
   interactive // boolean (true if it's the player's turn)
@@ -84,6 +85,7 @@ export default function GameBoard({
       if (isOwnPiece) {
         setSelectedSquare(square);
         getMoveOptions(square);
+        if (onPieceSelect) onPieceSelect(square, piece);
       }
     } else {
       // Trying to make a move
@@ -109,6 +111,7 @@ export default function GameBoard({
         if (isOwnPiece) {
           setSelectedSquare(square);
           getMoveOptions(square);
+          if (onPieceSelect) onPieceSelect(square, piece);
         } else {
           // Clicked empty or opponent piece, cancel selection
           setSelectedSquare(null);
