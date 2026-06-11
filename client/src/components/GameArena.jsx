@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldAlert, RefreshCw, LogOut, Copy, Check, MessageCircle, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, RefreshCw, LogOut, Copy, Check, MessageCircle, AlertTriangle, Trophy, Handshake, Flag, Clock, Crown, X } from 'lucide-react';
 import GameBoard from './GameBoard';
 import MoveHistory from './MoveHistory';
 import ChatBox from './ChatBox';
@@ -22,6 +22,9 @@ export default function GameArena({
   const [boardOrientation, setBoardOrientation] = useState(playerColor === 'black' ? 'black' : 'white');
   const [copied, setCopied] = useState(false);
   const [showConfirmLeave, setShowConfirmLeave] = useState(false);
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
+  const [showDrawConfirm, setShowDrawConfirm] = useState(false);
+  const prevStatusRef = useRef('playing');
 
   // Sync orientation with assigned color when color changes
   useEffect(() => {
@@ -44,6 +47,15 @@ export default function GameArena({
 
   const turn = game.turn(); // 'w' or 'b'
   const isCheck = game.inCheck();
+  const isGameOver = ['checkmate', 'stalemate', 'draw', 'resigned', 'timeout'].includes(status);
+
+  // Show game over modal when status changes to a game-over state
+  useEffect(() => {
+    if (isGameOver && prevStatusRef.current === 'playing') {
+      setTimeout(() => setShowGameOverModal(true), 500);
+    }
+    prevStatusRef.current = status;
+  }, [status, isGameOver]);
 
   // Draw offer state
   const drawOfferFrom = isMultiplayer ? gameState?.drawOfferFrom : null;
@@ -318,32 +330,34 @@ export default function GameArena({
         {/* Right Side: Side Panels and Actions */}
         <div className="col-span-1 lg:col-span-5 flex flex-col gap-2 min-h-0 overflow-hidden">
 
-          {/* Draw Offer banner inside Game Arena */}
+          {/* Draw Offer from Opponent */}
           {isOpponentDrawOffer && status === 'playing' && (
-            <div className="glass border-2 border-amber-500/30 p-3 rounded-xl flex flex-col gap-2 items-center justify-center text-center animate-bounce shrink-0">
-              <p className="text-xs text-slate-200">
-                Opponent has offered a <span className="text-amber-400 font-bold">Draw</span>.
+            <div className="glass border-2 border-amber-500/30 p-4 rounded-xl flex flex-col gap-3 items-center justify-center text-center shrink-0 animate-fade-in">
+              <Handshake className="w-8 h-8 text-amber-400" />
+              <p className="text-sm text-slate-200">
+                Opponent has proposed a <span className="text-amber-400 font-bold">Draw Deal</span>
               </p>
+              <p className="text-[10px] text-slate-500">Do you want to accept and end the game as a draw, or continue playing?</p>
               <div className="flex gap-2 w-full">
                 <button
                   onClick={() => onRespondDraw(true)}
-                  className="flex-1 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md"
+                  className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md flex items-center justify-center gap-1"
                 >
-                  Accept Draw
+                  <Handshake className="w-3.5 h-3.5" /> Accept Draw
                 </button>
                 <button
                   onClick={() => onRespondDraw(false)}
-                  className="flex-1 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
+                  className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 flex items-center justify-center gap-1"
                 >
-                  Decline
+                  <X className="w-3.5 h-3.5" /> Continue Playing
                 </button>
               </div>
             </div>
           )}
 
           {isMyDrawOffer && status === 'playing' && (
-            <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center text-[10px] text-slate-400 italic shrink-0">
-              Draw offer sent. Waiting for opponent response...
+            <div className="bg-slate-900/60 p-2 rounded-xl border border-amber-500/20 text-center text-[10px] text-amber-400/80 italic shrink-0 flex items-center justify-center gap-1">
+              <Handshake className="w-3 h-3" /> Draw deal sent. Waiting for opponent's decision...
             </div>
           )}
 
@@ -352,17 +366,35 @@ export default function GameArena({
             <div className="grid grid-cols-2 gap-2 shrink-0">
               <button
                 onClick={onResign}
-                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-slate-950 transition-all text-center uppercase tracking-wider shadow"
+                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-slate-950 transition-all text-center uppercase tracking-wider shadow flex items-center justify-center gap-1"
               >
-                Resign
+                <Flag className="w-3.5 h-3.5" /> Resign
               </button>
               
               <button
-                onClick={onOfferDraw}
+                onClick={() => setShowDrawConfirm(true)}
                 disabled={!!drawOfferFrom}
-                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 disabled:opacity-40 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400 transition-all text-center uppercase tracking-wider shadow"
+                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 disabled:opacity-40 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400 transition-all text-center uppercase tracking-wider shadow flex items-center justify-center gap-1"
               >
-                Offer Draw
+                <Handshake className="w-3.5 h-3.5" /> Offer Draw
+              </button>
+            </div>
+          )}
+
+          {/* Post-game action buttons */}
+          {isGameOver && (
+            <div className="grid grid-cols-2 gap-2 shrink-0">
+              <button
+                onClick={() => setShowGameOverModal(true)}
+                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all text-center uppercase tracking-wider shadow flex items-center justify-center gap-1"
+              >
+                <Trophy className="w-3.5 h-3.5" /> Results
+              </button>
+              <button
+                onClick={onLeave}
+                className="py-2 px-3 rounded-xl font-bold text-[11px] bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-all text-center uppercase tracking-wider shadow flex items-center justify-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Leave
               </button>
             </div>
           )}
@@ -372,12 +404,13 @@ export default function GameArena({
             <MoveHistory history={isMultiplayer && gameState ? gameState.history : game.history({ verbose: true })} game={game} />
           </div>
 
-          {/* Chat Panel */}
+          {/* Chat Panel — stays active after game for tips exchange */}
           <div className="shrink-0 h-[140px] lg:flex-1 lg:h-auto lg:min-h-0 overflow-hidden">
             <ChatBox
               chatHistory={isMultiplayer && gameState ? gameState.chat : []}
               onSendMessage={onSendMessage}
               active={isMultiplayer}
+              gameOver={isGameOver}
             />
           </div>
 
@@ -410,6 +443,129 @@ export default function GameArena({
                 className="flex-1 py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Draw Confirmation Dialog */}
+      {showDrawConfirm && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="glass p-6 rounded-2xl text-center space-y-4 max-w-xs w-full border border-amber-500/20">
+            <Handshake className="w-10 h-10 text-amber-400 mx-auto" />
+            <h3 className="text-lg font-bold text-slate-100">Propose a Draw Deal?</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              This will send a draw offer to your opponent. They can accept to end the game as a draw, or decline to continue playing.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDrawConfirm(false);
+                  onOfferDraw();
+                }}
+                className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1"
+              >
+                <Handshake className="w-3.5 h-3.5" /> Send Deal
+              </button>
+              <button
+                onClick={() => setShowDrawConfirm(false)}
+                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700"
+              >
+                Continue Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GAME OVER MODAL */}
+      {showGameOverModal && isGameOver && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in">
+          <div className="glass p-8 rounded-3xl text-center space-y-5 max-w-sm w-full border border-slate-700 shadow-2xl relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowGameOverModal(false)}
+              className="absolute top-3 right-3 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Icon based on result */}
+            <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${
+              status === 'checkmate' ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border-2 border-amber-500/30' :
+              status === 'draw' || status === 'stalemate' ? 'bg-gradient-to-br from-slate-500/20 to-slate-400/20 border-2 border-slate-500/30' :
+              status === 'resigned' ? 'bg-gradient-to-br from-rose-500/20 to-red-500/20 border-2 border-rose-500/30' :
+              'bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border-2 border-indigo-500/30'
+            }`}>
+              {status === 'checkmate' && <Crown className="w-10 h-10 text-amber-400" />}
+              {(status === 'draw' || status === 'stalemate') && <Handshake className="w-10 h-10 text-slate-400" />}
+              {status === 'resigned' && <Flag className="w-10 h-10 text-rose-400" />}
+              {status === 'timeout' && <Clock className="w-10 h-10 text-indigo-400" />}
+            </div>
+
+            {/* Title */}
+            <div>
+              <h2 className="text-2xl font-extrabold text-slate-100">
+                {status === 'checkmate' && 'Checkmate!'}
+                {status === 'stalemate' && 'Stalemate!'}
+                {status === 'draw' && 'Draw!'}
+                {status === 'resigned' && 'Game Over'}
+                {status === 'timeout' && 'Time Out!'}
+              </h2>
+              <p className={`text-sm mt-1 font-semibold ${
+                status === 'checkmate' ? 'text-amber-400' :
+                status === 'draw' || status === 'stalemate' ? 'text-slate-400' :
+                status === 'resigned' ? 'text-rose-400' : 'text-indigo-400'
+              }`}>
+                {getBannerMessage()}
+              </p>
+            </div>
+
+            {/* Game Summary */}
+            <div className="bg-slate-900/60 rounded-xl p-4 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Total Moves</span>
+                <span className="text-slate-200 font-mono font-bold">{game.history().length}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>White Time</span>
+                <span className="text-slate-200 font-mono font-bold">{formatTime(displayClocks.w)}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Black Time</span>
+                <span className="text-slate-200 font-mono font-bold">{formatTime(displayClocks.b)}</span>
+              </div>
+              {(status === 'draw' || status === 'stalemate') && (
+                <div className="flex justify-between text-slate-400">
+                  <span>Reason</span>
+                  <span className="text-amber-400 font-semibold capitalize">
+                    {isMultiplayer ? (gameState?.reason || 'draw').replace(/_/g, ' ') : game.isStalemate() ? 'stalemate' : 'draw'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Tips prompt for multiplayer */}
+            {isMultiplayer && (
+              <p className="text-[11px] text-slate-500 italic">
+                💬 Chat is still active — exchange tips and GG with your opponent!
+              </p>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowGameOverModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-1.5"
+              >
+                <MessageCircle className="w-4 h-4" /> {isMultiplayer ? 'Chat & Review' : 'Review Game'}
+              </button>
+              <button
+                onClick={onLeave}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+              >
+                <LogOut className="w-4 h-4" /> Leave
               </button>
             </div>
           </div>
