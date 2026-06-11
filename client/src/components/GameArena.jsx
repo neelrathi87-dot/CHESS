@@ -224,7 +224,7 @@ export default function GameArena({
   const bottomClock = bottomPlayer.color === 'white' ? displayClocks.w : displayClocks.b;
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-2 h-[100dvh] flex flex-col overflow-hidden">
+    <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-6 min-h-[100dvh] lg:h-[100dvh] flex flex-col overflow-x-hidden lg:overflow-hidden">
       {/* Top Banner Controls */}
       <div className="flex justify-between items-center bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
@@ -346,7 +346,7 @@ export default function GameArena({
         </div>
 
         {/* Right Side: Side Panels and Actions */}
-        <div className="col-span-1 lg:col-span-5 flex flex-col gap-2 min-h-0 overflow-hidden">
+        <div className="col-span-1 lg:col-span-5 flex flex-col gap-2 lg:min-h-0 lg:overflow-hidden">
 
           {/* Draw Offer from Opponent */}
           {isOpponentDrawOffer && status === 'playing' && (
@@ -423,7 +423,7 @@ export default function GameArena({
           </div>
 
           {/* Learn Assistant / Chat Panel */}
-          <div className={`${isLearnMode ? 'flex-1 min-h-0' : 'shrink-0 h-[140px] lg:flex-1 lg:h-auto lg:min-h-0'} overflow-hidden`}>
+          <div className={`${isLearnMode ? 'flex-1 min-h-[500px] lg:min-h-0' : 'shrink-0 h-[140px] lg:flex-1 lg:h-auto lg:min-h-0'} overflow-hidden flex flex-col`}>
             {isLearnMode ? (
               <LearnAssistant
                 game={game}

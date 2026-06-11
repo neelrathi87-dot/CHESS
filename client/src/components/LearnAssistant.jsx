@@ -332,18 +332,18 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
             {!selectedPiece ? (
               <div className="space-y-3">
                 <p className="text-sm text-slate-400 text-center mb-3">Tap a piece to learn about it</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {pieceTypes.map(type => {
                     const info = PIECE_INFO[type];
                     return (
                       <button
                         key={type}
                         onClick={() => setSelectedPiece(type)}
-                        className="flex flex-col items-center gap-1.5 p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all active:scale-95"
+                        className="flex flex-col items-center gap-2 p-5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all active:scale-95 shadow-sm shadow-black/20"
                       >
-                        <span className="text-4xl select-none">{info.symbol}</span>
-                        <span className="text-sm font-semibold text-slate-200">{info.name}</span>
-                        <span className="text-xs text-slate-500">Value: {info.value}</span>
+                        <span className="text-6xl md:text-5xl select-none">{info.symbol}</span>
+                        <span className="text-base md:text-sm font-bold text-slate-200">{info.name}</span>
+                        <span className="text-sm md:text-xs text-slate-500">Value: {info.value}</span>
                       </button>
                     );
                   })}
