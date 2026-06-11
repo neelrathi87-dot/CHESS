@@ -90,12 +90,11 @@ export default function App() {
 
     socket.on('connect_error', (err) => {
       console.log('Connection error:', err.message);
-      setConnecting(true);
+      // Don't show overlay here — let ensureConnected handle UI feedback when user takes action
     });
 
     socket.io.on('reconnect_attempt', (attempt) => {
       console.log(`Reconnection attempt ${attempt}...`);
-      setConnecting(true);
     });
 
     socket.io.on('reconnect', () => {
@@ -282,7 +281,7 @@ export default function App() {
     }
     
     setConnecting(true);
-    showToast('Connecting to server... please wait (may take up to 50s on first load)', 'warning');
+    showToast('Connecting to game server... please wait a moment.', 'warning');
     
     // Force reconnect
     socket.connect();
@@ -290,18 +289,19 @@ export default function App() {
     const onConnect = () => {
       socket.off('connect', onConnect);
       setConnecting(false);
+      showToast('Connected! Setting up your game...', 'success');
       callback();
     };
     socket.on('connect', onConnect);
     
-    // Timeout after 65 seconds
+    // Timeout after 20 seconds
     setTimeout(() => {
       socket.off('connect', onConnect);
       if (!socket.connected) {
         setConnecting(false);
-        showToast('Could not connect to server. Please try again.', 'error');
+        showToast('Could not connect to server. Please check your connection and try again.', 'error');
       }
-    }, 65000);
+    }, 20000);
   };
 
   // Create Multiplayer Room
@@ -523,7 +523,7 @@ export default function App() {
                   <RefreshCw className="w-10 h-10 text-teal-400 animate-spin mx-auto" />
                   <h3 className="text-lg font-bold text-slate-100">Connecting to Server...</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    The game server is waking up. This can take up to 50 seconds on the first connection. Please wait!
+                    Setting up your connection to the game server. This usually takes just a moment!
                   </p>
                   <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                     <div className="bg-gradient-to-r from-teal-500 to-emerald-500 h-full rounded-full animate-pulse" style={{width: '60%'}}></div>

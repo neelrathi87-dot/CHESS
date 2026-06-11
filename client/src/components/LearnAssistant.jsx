@@ -14,29 +14,40 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceAsked, setVoiceAsked] = useState(false);
   const prevMsgCountRef = useRef(1); // starts at 1 for the welcome message
+  const voiceEnabledRef = useRef(false); // ref to avoid stale closures
 
-  // Clean up speech on unmount
+  // Keep ref in sync with state
   useEffect(() => {
+    voiceEnabledRef.current = voiceEnabled;
+  }, [voiceEnabled]);
+
+  // Preload voices (they load asynchronously on many browsers)
+  useEffect(() => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices(); // trigger initial load
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices(); // cache voices
+      };
+    }
     return () => {
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
+        window.speechSynthesis.onvoiceschanged = null;
       }
     };
   }, []);
 
-  // Speak function using Web Speech API
-  const speak = (text) => {
-    if (!voiceEnabled || !window.speechSynthesis) return;
-    // Cancel any ongoing speech
+  // Core speak function — uses ref, not state, to check enabled
+  const speakText = (text) => {
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    // Strip emojis and special chars for cleaner speech
     // eslint-disable-next-line no-misleading-character-class
     const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').trim();
+    if (!cleanText) return;
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 0.9;
     utterance.pitch = 1;
     utterance.lang = 'en-US';
-    // Try to use a good voice
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
                       voices.find(v => v.lang.startsWith('en'));
@@ -46,42 +57,46 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
 
   // Enable voice with user interaction (required by browsers)
   const enableVoice = () => {
+    voiceEnabledRef.current = true; // set ref immediately so speak() works
     setVoiceEnabled(true);
     setVoiceAsked(true);
-    // Trigger a silent speak to unlock audio context
     if (window.speechSynthesis) {
+      // Unlock audio context with silent utterance, then speak welcome
       const unlock = new SpeechSynthesisUtterance('');
-      window.speechSynthesis.speak(unlock);
-      // Speak welcome after a tiny delay
+      unlock.onend = () => {
+        speakText('Welcome to Learn Mode! I will guide you through the game. Let\'s begin!');
+      };
+      // Fallback if onend doesn't fire
       setTimeout(() => {
-        speak('Welcome to Learn Mode! I will guide you through the game. Let\'s begin!');
-      }, 200);
+        speakText('Welcome to Learn Mode! I will guide you through the game. Let\'s begin!');
+      }, 500);
+      window.speechSynthesis.speak(unlock);
     }
   };
 
   const disableVoice = () => {
+    voiceEnabledRef.current = false;
     setVoiceEnabled(false);
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
   };
 
-  // Auto-scroll assistant messages
+  // Auto-scroll assistant messages and auto-speak new ones
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-    // Auto-speak new messages
-    if (voiceEnabled && assistantMessages.length > prevMsgCountRef.current) {
+    // Auto-speak new messages (uses ref to avoid stale closure)
+    if (voiceEnabledRef.current && assistantMessages.length > prevMsgCountRef.current) {
       const newMsgs = assistantMessages.slice(prevMsgCountRef.current);
       const toSpeak = newMsgs.map(m => {
         if (m.type === 'eval') return `${m.quality}. ${m.text}`;
         return m.text;
       }).join('. ');
-      speak(toSpeak);
+      speakText(toSpeak);
     }
     prevMsgCountRef.current = assistantMessages.length;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistantMessages]);
 
   // Track move count for the effect
