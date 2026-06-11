@@ -3,6 +3,8 @@ const { Chess } = require('chess.js');
 class RoomManager {
   constructor() {
     this.rooms = new Map();
+    // Matchmaking queue: array of { playerId, socketId, username, timeLimit, joinedAt }
+    this.matchQueue = [];
   }
 
   // Generate a random 6-character room code
@@ -409,6 +411,108 @@ class RoomManager {
         } : null
       }
     };
+  }
+
+  // ==================== MATCHMAKING ====================
+
+  // Add player to matchmaking queue
+  joinQueue(playerId, socketId, username, timeLimit) {
+    // Remove if already in queue
+    this.leaveQueue(playerId);
+
+    this.matchQueue.push({
+      playerId,
+      socketId,
+      username: username || 'Player',
+      timeLimit: timeLimit || 10,
+      joinedAt: Date.now()
+    });
+
+    console.log(`Player ${playerId} joined matchmaking queue. Queue size: ${this.matchQueue.length}`);
+  }
+
+  // Remove player from matchmaking queue
+  leaveQueue(playerId) {
+    const before = this.matchQueue.length;
+    this.matchQueue = this.matchQueue.filter(p => p.playerId !== playerId);
+    if (this.matchQueue.length < before) {
+      console.log(`Player ${playerId} left matchmaking queue. Queue size: ${this.matchQueue.length}`);
+    }
+  }
+
+  // Remove player from queue by socket ID (for disconnects)
+  removeFromQueueBySocket(socketId) {
+    this.matchQueue = this.matchQueue.filter(p => p.socketId !== socketId);
+  }
+
+  // Try to find a match - returns { player1, player2, room } or null
+  findMatch() {
+    if (this.matchQueue.length < 2) return null;
+
+    // Match first two players in the queue (FIFO)
+    const player1 = this.matchQueue.shift();
+    const player2 = this.matchQueue.shift();
+
+    // Use the average time limit
+    const timeLimit = Math.round((player1.timeLimit + player2.timeLimit) / 2);
+
+    // Randomly assign colors
+    const p1IsWhite = Math.random() < 0.5;
+
+    const whitePlayer = {
+      id: p1IsWhite ? player1.playerId : player2.playerId,
+      socketId: p1IsWhite ? player1.socketId : player2.socketId,
+      username: p1IsWhite ? player1.username : player2.username,
+      connected: true,
+      reconnectTimeout: null
+    };
+
+    const blackPlayer = {
+      id: p1IsWhite ? player2.playerId : player1.playerId,
+      socketId: p1IsWhite ? player2.socketId : player1.socketId,
+      username: p1IsWhite ? player2.username : player1.username,
+      connected: true,
+      reconnectTimeout: null
+    };
+
+    const roomId = this.generateRoomId();
+    const timeLimitMs = timeLimit * 60 * 1000;
+
+    const room = {
+      id: roomId,
+      players: {
+        white: whitePlayer,
+        black: blackPlayer
+      },
+      game: new Chess(),
+      status: 'playing', // Start immediately
+      timeLimit: timeLimitMs,
+      clocks: {
+        white: timeLimitMs,
+        black: timeLimitMs
+      },
+      lastMoveTimestamp: Date.now(),
+      drawOfferFrom: null,
+      chat: [],
+      winner: null,
+      reason: null,
+      isMatchmade: true // Flag to identify matchmade games
+    };
+
+    this.rooms.set(roomId, room);
+
+    console.log(`Matchmaking: ${player1.playerId} vs ${player2.playerId} in room ${roomId}`);
+
+    return {
+      room,
+      player1: { ...player1, color: p1IsWhite ? 'white' : 'black' },
+      player2: { ...player2, color: p1IsWhite ? 'black' : 'white' }
+    };
+  }
+
+  // Get queue size
+  getQueueSize() {
+    return this.matchQueue.length;
   }
 
   deleteRoom(roomId) {

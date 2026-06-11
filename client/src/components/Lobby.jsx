@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Monitor, Users, ShieldAlert, Swords, Plus, Key } from 'lucide-react';
+import { Monitor, Users, Globe, ShieldAlert, Swords, Plus, Key, Search, X } from 'lucide-react';
 
-export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame }) {
-  const [mode, setMode] = useState('computer'); // 'computer' or 'multiplayer'
+export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching }) {
+  const [mode, setMode] = useState('computer'); // 'computer' | 'multiplayer' | 'online'
   
   // Computer options
   const [aiDifficulty, setAiDifficulty] = useState('medium');
@@ -13,6 +13,10 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame })
   const [mpColor, setMpColor] = useState('random');
   const [timeLimit, setTimeLimit] = useState(10); // in minutes
   const [roomCodeInput, setRoomCodeInput] = useState('');
+
+  // Online matchmaking options
+  const [onlineUsername, setOnlineUsername] = useState('');
+  const [onlineTimeLimit, setOnlineTimeLimit] = useState(10);
 
   const handleStartComputer = () => {
     onStartComputerGame(aiDifficulty, aiColor);
@@ -29,6 +33,14 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame })
     onJoinRoom({ roomId: roomCodeInput.trim().toUpperCase(), username });
   };
 
+  const handleFindMatch = () => {
+    onFindMatch({ username: onlineUsername || 'Player', timeLimit: onlineTimeLimit });
+  };
+
+  const handleCancelSearch = () => {
+    onCancelSearch();
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 py-8">
       {/* Title Header */}
@@ -36,36 +48,50 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame })
         <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-500 to-indigo-500 bg-clip-text text-transparent flex items-center justify-center gap-3">
           <Swords className="w-12 h-12 text-teal-400 animate-pulse" /> ANTIGRAVITY CHESS
         </h1>
-        <p className="text-slate-400 mt-2 text-lg">Play against the machine or challenge friends live</p>
+        <p className="text-slate-400 mt-2 text-lg">Play against AI, find random opponents, or challenge friends</p>
       </div>
 
-      {/* Mode Toggle Buttons */}
-      <div className="flex bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-full max-w-md mb-8">
+      {/* Mode Toggle Buttons - 3 tabs */}
+      <div className="flex bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-full max-w-lg mb-8">
         <button
           onClick={() => setMode('computer')}
-          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all text-sm ${
             mode === 'computer'
               ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Monitor className="w-5 h-5" /> vs Computer
+          <Monitor className="w-4 h-4" /> vs AI
+        </button>
+        <button
+          onClick={() => setMode('online')}
+          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all text-sm ${
+            mode === 'online'
+              ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Globe className="w-4 h-4" /> Play Online
         </button>
         <button
           onClick={() => setMode('multiplayer')}
-          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-all text-sm ${
             mode === 'multiplayer'
               ? 'bg-gradient-to-r from-teal-500 to-indigo-500 text-white shadow-lg'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Users className="w-5 h-5" /> Multiplayer
+          <Users className="w-4 h-4" /> Private
         </button>
       </div>
 
       {/* Configuration Panel */}
       <div className="w-full max-w-md glass p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500"></div>
+        <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${
+          mode === 'computer' ? 'from-emerald-500 via-teal-500 to-indigo-500' :
+          mode === 'online' ? 'from-violet-500 via-fuchsia-500 to-pink-500' :
+          'from-teal-500 via-indigo-500 to-violet-500'
+        }`}></div>
 
         {mode === 'computer' ? (
           /* VS COMPUTER PANEL */
@@ -130,8 +156,90 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame })
               Start AI Match
             </button>
           </div>
+        ) : mode === 'online' ? (
+          /* PLAY ONLINE (RANDOM MATCHMAKING) PANEL */
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-fuchsia-400" /> Find Random Opponent
+            </h2>
+            <p className="text-sm text-slate-400 -mt-3">
+              Get matched with a random player online. Colors are assigned randomly.
+            </p>
+
+            {/* Display Name */}
+            <div className="space-y-2">
+              <label htmlFor="onlineUsername" className="text-sm font-medium text-slate-400 block">Your Name</label>
+              <input
+                id="onlineUsername"
+                type="text"
+                value={onlineUsername}
+                onChange={(e) => setOnlineUsername(e.target.value)}
+                placeholder="Player"
+                maxLength={14}
+                disabled={isSearching}
+                className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-fuchsia-500 transition-colors disabled:opacity-50"
+              />
+            </div>
+
+            {/* Time Control */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400 block">Time Control</label>
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { value: 1, label: '1m', sub: 'Bullet' },
+                  { value: 3, label: '3m', sub: 'Blitz' },
+                  { value: 5, label: '5m', sub: 'Blitz' },
+                  { value: 10, label: '10m', sub: 'Rapid' },
+                  { value: 30, label: '30m', sub: 'Classic' }
+                ].map((t) => (
+                  <button
+                    key={t.value}
+                    onClick={() => !isSearching && setOnlineTimeLimit(t.value)}
+                    disabled={isSearching}
+                    className={`py-2 rounded-lg border font-semibold transition-all text-center disabled:opacity-50 ${
+                      onlineTimeLimit === t.value
+                        ? 'bg-fuchsia-500/20 border-fuchsia-500 text-fuchsia-300 shadow-md'
+                        : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="text-sm block">{t.label}</span>
+                    <span className="text-[9px] text-slate-500 block">{t.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search / Cancel Button */}
+            {!isSearching ? (
+              <button
+                onClick={handleFindMatch}
+                className="w-full py-4 mt-4 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white font-bold rounded-xl shadow-lg shadow-fuchsia-500/10 hover:shadow-fuchsia-400/20 flex items-center justify-center gap-2 transform hover:-translate-y-0.5 transition-all text-lg"
+              >
+                <Search className="w-5 h-5" /> Find Match
+              </button>
+            ) : (
+              <div className="space-y-4 mt-4">
+                {/* Searching Animation */}
+                <div className="text-center space-y-3 py-4">
+                  <div className="relative w-16 h-16 mx-auto">
+                    <div className="absolute inset-0 border-4 border-fuchsia-500/20 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-transparent border-t-fuchsia-500 rounded-full animate-spin"></div>
+                    <Search className="absolute inset-0 m-auto w-6 h-6 text-fuchsia-400" />
+                  </div>
+                  <p className="text-slate-200 font-semibold">Searching for opponent...</p>
+                  <p className="text-xs text-slate-500">This may take a moment. Waiting for another player to join.</p>
+                </div>
+                <button
+                  onClick={handleCancelSearch}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
+                >
+                  <X className="w-4 h-4 text-rose-400" /> Cancel Search
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
-          /* MULTIPLAYER PANEL */
+          /* PRIVATE MULTIPLAYER PANEL */
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-400" /> Challenge a Friend

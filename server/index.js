@@ -163,10 +163,61 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 8. Disconnect
+  // 8. Find Random Match (Matchmaking)
+  socket.on('findMatch', ({ playerId, username, timeLimit }) => {
+    try {
+      // Add player to matchmaking queue
+      roomManager.joinQueue(playerId, socket.id, username, timeLimit || 10);
+
+      // Send queue position update
+      socket.emit('queueUpdate', { position: roomManager.getQueueSize(), searching: true });
+
+      // Try to find a match
+      const match = roomManager.findMatch();
+      if (match) {
+        const { room, player1, player2 } = match;
+
+        // Get sockets for both players
+        const p1Socket = io.sockets.sockets.get(player1.socketId);
+        const p2Socket = io.sockets.sockets.get(player2.socketId);
+
+        if (p1Socket && p2Socket) {
+          // Join both players to the room
+          p1Socket.join(room.id);
+          p2Socket.join(room.id);
+
+          const state = roomManager.getRoomState(room.id);
+
+          // Notify both players of the match
+          p1Socket.emit('matchFound', { state, color: player1.color });
+          p2Socket.emit('matchFound', { state, color: player2.color });
+
+          console.log(`Match found: ${player1.playerId} (${player1.color}) vs ${player2.playerId} (${player2.color}) in room ${room.id}`);
+        }
+      }
+    } catch (err) {
+      console.error('Matchmaking error:', err);
+      socket.emit('errorMsg', { message: 'Failed to join matchmaking queue.' });
+    }
+  });
+
+  // 9. Cancel Match Search
+  socket.on('cancelSearch', ({ playerId }) => {
+    try {
+      roomManager.leaveQueue(playerId);
+      socket.emit('searchCancelled');
+    } catch (err) {
+      console.error('Cancel search error:', err);
+    }
+  });
+
+  // 10. Disconnect
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
     
+    // Remove from matchmaking queue
+    roomManager.removeFromQueueBySocket(socket.id);
+
     roomManager.handleDisconnect(socket.id, (roomId, action, data) => {
       if (action === 'room_closed') {
         io.to(roomId).emit('errorMsg', { message: 'Host left the lobby. Room closed.' });

@@ -51,6 +51,7 @@ export default function App() {
   const [reconnectUsername, setReconnectUsername] = useState('');
   const [serverConnected, setServerConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const playerId = getOrCreatePlayerId();
   const socket = getSocket();
@@ -174,8 +175,31 @@ export default function App() {
       setReconnectCode(null);
     });
 
+    // Matchmaking events
+    socket.on('matchFound', ({ state, color }) => {
+      setIsSearching(false);
+      setGameState(state);
+      setPlayerColor(color);
+      setGame(new Chess(state.fen));
+      setIsOffline(false);
+      setScreen('arena');
+      sessionStorage.setItem('chess_room_id', state.id);
+      setReconnectCode(state.id);
+      showToast('Match found! Game starting...', 'info');
+    });
+
+    socket.on('searchCancelled', () => {
+      setIsSearching(false);
+    });
+
+    socket.on('queueUpdate', ({ position, searching }) => {
+      setIsSearching(searching);
+    });
+
     return () => {
       socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
       socket.off('roomCreated');
       socket.off('gameState');
       socket.off('joinedSuccess');
@@ -184,6 +208,9 @@ export default function App() {
       socket.off('playerDisconnected');
       socket.off('errorMsg');
       socket.off('gameOver');
+      socket.off('matchFound');
+      socket.off('searchCancelled');
+      socket.off('queueUpdate');
     };
   }, [playerId]);
 
@@ -312,6 +339,24 @@ export default function App() {
 
     // Clear any previous online reconnection
     sessionStorage.removeItem('chess_room_id');
+  };
+
+  // Find Random Match (Matchmaking)
+  const handleFindMatch = ({ username, timeLimit }) => {
+    ensureConnected(() => {
+      setIsSearching(true);
+      socket.emit('findMatch', {
+        playerId,
+        username: username || 'Player',
+        timeLimit: timeLimit || 10
+      });
+    });
+  };
+
+  // Cancel Match Search
+  const handleCancelSearch = () => {
+    setIsSearching(false);
+    socket.emit('cancelSearch', { playerId });
   };
 
   // Resign active game
@@ -466,6 +511,9 @@ export default function App() {
               onCreateRoom={handleCreateRoom}
               onJoinRoom={handleJoinRoom}
               onStartComputerGame={handleStartComputerGame}
+              onFindMatch={handleFindMatch}
+              onCancelSearch={handleCancelSearch}
+              isSearching={isSearching}
             />
           </div>
         ) : (
