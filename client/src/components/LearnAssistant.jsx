@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Chess } from 'chess.js';
 import { GraduationCap, BookOpen, Lightbulb, AlertTriangle, Undo2, ChevronRight, ChevronLeft, Info, Shield } from 'lucide-react';
 import { PIECE_INFO, getPositionTips, detectThreats, evaluateMove, CHESS_PRINCIPLES } from '../utils/learnHelper';
 
@@ -19,19 +20,27 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
     }
   }, [assistantMessages]);
 
+  // Track move count for the effect
+  const moveCount = moveHistory ? moveHistory.length : 0;
+
   // Evaluate last move and update assistant
   useEffect(() => {
-    if (!lastMove || !game) return;
+    if (!game || moveCount === 0) return;
 
     const myColor = playerColor === 'white' ? 'w' : 'b';
+    const history = game.history({ verbose: true });
+    const latestMove = history.length > 0 ? history[history.length - 1] : null;
 
-    // Only evaluate player's own moves
-    if (lastMove.color === myColor) {
+    if (!latestMove) return;
+
+    // Player's own move — evaluate it
+    if (latestMove.color === myColor) {
       try {
-        // We need to undo, evaluate, then redo
-        game.undo();
-        const eval_ = evaluateMove(game, lastMove);
-        game.move(lastMove);
+        // Clone game, undo last move, evaluate, then the clone is discarded
+        const cloned = new Chess();
+        cloned.loadPgn(game.pgn());
+        cloned.undo();
+        const eval_ = evaluateMove(cloned, latestMove);
 
         setMoveEval(eval_);
         setAssistantMessages(prev => [...prev, {
@@ -40,18 +49,37 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
           quality: eval_.quality,
           color: eval_.color,
           text: eval_.message,
-          move: lastMove.san
+          move: latestMove.san
         }]);
       } catch (e) {
-        // If evaluation fails, just skip
+        // Fallback if evaluation errors
+        setAssistantMessages(prev => [...prev, {
+          type: 'tip',
+          text: `You played ${latestMove.san}. Keep developing your pieces!`
+        }]);
       }
     } else {
-      // Opponent moved — give tips
-      const tips = getPositionTips(game, playerColor);
-      const threats = detectThreats(game, playerColor);
-
+      // AI / Opponent moved — explain what happened + give tips
       const newMessages = [];
 
+      // Explain the AI's move
+      const pieceNames = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+      const pieceName = pieceNames[latestMove.piece] || latestMove.piece;
+      if (latestMove.captured) {
+        const capturedName = pieceNames[latestMove.captured] || latestMove.captured;
+        newMessages.push({
+          type: 'info',
+          text: `🎓 Coach played ${latestMove.san} — captured your ${capturedName} with ${pieceName}. Be careful with unprotected pieces!`
+        });
+      } else {
+        newMessages.push({
+          type: 'info',
+          text: `🎓 Coach played ${latestMove.san} (moved ${pieceName} to ${latestMove.to}). It's your turn now!`
+        });
+      }
+
+      // Detect threats to player's pieces
+      const threats = detectThreats(game, playerColor);
       if (threats.length > 0) {
         newMessages.push({
           type: 'threat',
@@ -59,6 +87,8 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
         });
       }
 
+      // Position tips
+      const tips = getPositionTips(game, playerColor);
       if (tips.length > 0) {
         newMessages.push({
           type: 'tip',
@@ -66,11 +96,9 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
         });
       }
 
-      if (newMessages.length > 0) {
-        setAssistantMessages(prev => [...prev, ...newMessages]);
-      }
+      setAssistantMessages(prev => [...prev, ...newMessages]);
     }
-  }, [moveHistory?.length]);
+  }, [moveCount]);
 
   const pieceTypes = ['p', 'n', 'b', 'r', 'q', 'k'];
 
@@ -112,10 +140,11 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
             {/* Messages */}
             <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
               {assistantMessages.map((msg, idx) => (
-                <div key={idx} className={`rounded-lg p-2 text-[11px] leading-relaxed ${
+                <div key={idx} className={`rounded-xl p-3 text-sm leading-relaxed ${
                   msg.type === 'welcome' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' :
-                  msg.type === 'eval' ? `bg-slate-900/60 border border-slate-800` :
+                  msg.type === 'eval' ? 'bg-slate-900/60 border border-slate-800' :
                   msg.type === 'threat' ? 'bg-rose-500/10 border border-rose-500/20 text-rose-300' :
+                  msg.type === 'info' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-300' :
                   'bg-indigo-500/5 border border-indigo-500/10 text-indigo-300'
                 }`}>
                   {msg.type === 'eval' ? (

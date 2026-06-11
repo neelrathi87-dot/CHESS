@@ -233,9 +233,12 @@ export default function App() {
       const timer = setTimeout(() => {
         const move = getComputerMove(game, offlineDifficulty);
         if (move) {
-          const newGame = new Chess(game.fen());
           try {
-            newGame.move({ from: move.from, to: move.to, promotion: move.promotion });
+            // Apply move to existing game, then clone with full history
+            game.move({ from: move.from, to: move.to, promotion: move.promotion });
+            const newGame = new Chess();
+            newGame.loadPgn(game.pgn());
+            setLastMove(newGame.history({ verbose: true }).slice(-1)[0] || null);
             setGame(newGame);
           } catch (err) {
             console.error('AI move error:', err);
@@ -251,10 +254,13 @@ export default function App() {
   // Handle client move request
   const handleMove = (moveData) => {
     if (isOffline) {
-      const newGame = new Chess(game.fen());
       try {
-        const result = newGame.move(moveData);
+        // Apply move to existing game instance to preserve history
+        const result = game.move(moveData);
         if (result) {
+          // Clone with full history via PGN
+          const newGame = new Chess();
+          newGame.loadPgn(game.pgn());
           setGame(newGame);
           setLastMove(result);
         }
@@ -363,19 +369,25 @@ export default function App() {
   // Undo Move (Learn Mode only) — undoes both AI move and player move
   const handleUndo = () => {
     if (!isLearnMode || !isOffline) return;
-    const newGame = new Chess(game.fen());
     
-    // Undo AI's last move
-    const undone1 = newGame.undo();
-    // Undo player's last move
-    const undone2 = newGame.undo();
-    
-    if (undone1 || undone2) {
-      setGame(newGame);
-      setAiIsThinking(false);
-      setLastMove(null);
-      showToast('Move undone! Try a different approach.', 'info');
+    const historyLen = game.history().length;
+    if (historyLen < 2) {
+      showToast('No moves to undo yet!', 'info');
+      return;
     }
+    
+    // Undo AI's last move then player's last move
+    game.undo();
+    game.undo();
+    
+    // Clone with preserved history
+    const newGame = new Chess();
+    newGame.loadPgn(game.pgn());
+    
+    setGame(newGame);
+    setAiIsThinking(false);
+    setLastMove(null);
+    showToast('Move undone! Try a different approach.', 'info');
   };
 
   // Find Random Match (Matchmaking)
