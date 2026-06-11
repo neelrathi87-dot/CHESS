@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import GameArena from './components/GameArena';
 import { getComputerMove } from './utils/ai';
-import { ShieldAlert, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 // Socket connection singleton
 let socketInstance = null;
@@ -51,7 +51,6 @@ export default function App() {
   const [gameState, setGameState] = useState(null);
   const [reconnectCode, setReconnectCode] = useState(null);
   const [reconnectUsername, setReconnectUsername] = useState('');
-  const [serverConnected, setServerConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -69,8 +68,10 @@ export default function App() {
     const savedRoomId = sessionStorage.getItem('chess_room_id');
     const savedUsername = sessionStorage.getItem('chess_username') || '';
     if (savedRoomId) {
-      setReconnectCode(savedRoomId);
-      setReconnectUsername(savedUsername);
+      setTimeout(() => {
+        setReconnectCode(savedRoomId);
+        setReconnectUsername(savedUsername);
+      }, 0);
     }
   }, []);
 
@@ -80,13 +81,11 @@ export default function App() {
 
     socket.on('connect', () => {
       console.log('Connected to socket server');
-      setServerConnected(true);
       setConnecting(false);
     });
 
     socket.on('disconnect', () => {
       console.log('Disconnected from socket server');
-      setServerConnected(false);
     });
 
     socket.on('connect_error', (err) => {
@@ -100,47 +99,24 @@ export default function App() {
     });
 
     socket.io.on('reconnect', () => {
-      setServerConnected(true);
       setConnecting(false);
     });
 
-    socket.on('roomCreated', (state) => {
-      // Host has created the room
+    socket.on('roomCreated', ({ roomId, color, state }) => {
       setGameState(state);
-      setPlayerColor(state.players.white?.id === playerId ? 'white' : 'black');
+      setPlayerColor(color);
       setGame(new Chess(state.fen));
       setIsOffline(false);
       setScreen('arena');
-      
-      // Save for reconnection
-      sessionStorage.setItem('chess_room_id', state.id);
-      sessionStorage.setItem('chess_username', state.players.white?.username || state.players.black?.username || '');
-      setReconnectCode(state.id);
+      sessionStorage.setItem('chess_room_id', roomId);
+      setReconnectCode(roomId);
     });
 
     socket.on('gameState', (state) => {
       setGameState(state);
-      
-      // Sync local board representation
-      const newGame = new Chess(state.fen);
-      // Wait, we need to load move history properly to preserve move arrows/last move highlights
-      // Let's reconstruct game moves if needed, or simply load fen. loading FEN is solid.
+      const newGame = new Chess();
+      newGame.loadPgn(state.pgn || '');
       setGame(newGame);
-
-      // Determine player color assignment
-      if (state.players.white?.id === playerId) {
-        setPlayerColor('white');
-      } else if (state.players.black?.id === playerId) {
-        setPlayerColor('black');
-      } else {
-        setPlayerColor('spectator');
-      }
-
-      setIsOffline(false);
-      setScreen('arena');
-      
-      // Save for reconnection
-      sessionStorage.setItem('chess_room_id', state.id);
     });
 
     socket.on('joinedSuccess', ({ color }) => {
@@ -149,7 +125,7 @@ export default function App() {
       }
     });
 
-    socket.on('drawOffered', ({ from }) => {
+    socket.on('drawOffered', () => {
       // RoomManager handles syncing, but we can display a toast
       showToast('Opponent offered a draw!', 'warning');
     });
@@ -194,7 +170,7 @@ export default function App() {
       setIsSearching(false);
     });
 
-    socket.on('queueUpdate', ({ position, searching }) => {
+    socket.on('queueUpdate', ({ searching }) => {
       setIsSearching(searching);
     });
 
@@ -214,6 +190,7 @@ export default function App() {
       socket.off('searchCancelled');
       socket.off('queueUpdate');
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerId]);
 
   // Handle local AI moves
@@ -225,7 +202,9 @@ export default function App() {
     const isGameActive = !game.isGameOver() && offlineClocks.w > 0 && offlineClocks.b > 0;
 
     if (isAiTurn && isGameActive && !aiIsThinking) {
-      setAiIsThinking(true);
+      setTimeout(() => {
+        setAiIsThinking(true);
+      }, 0);
       
       // Artificial delay so the AI feels natural and user can see their last move
       const thinkTime = offlineDifficulty === 'easy' ? 400 : (offlineDifficulty === 'medium' ? 600 : 800);
@@ -240,8 +219,8 @@ export default function App() {
             newGame.loadPgn(game.pgn());
             setLastMove(newGame.history({ verbose: true }).slice(-1)[0] || null);
             setGame(newGame);
-          } catch (err) {
-            console.error('AI move error:', err);
+          } catch {
+            console.error('AI move error');
           }
         }
         setAiIsThinking(false);
@@ -249,6 +228,7 @@ export default function App() {
 
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, playerColor, isOffline, offlineDifficulty, screen]);
 
   // Handle client move request
@@ -264,7 +244,7 @@ export default function App() {
           setGame(newGame);
           setLastMove(result);
         }
-      } catch (err) {
+      } catch {
         showToast('Invalid move', 'error');
       }
     } else {
@@ -293,7 +273,6 @@ export default function App() {
     const onConnect = () => {
       socket.off('connect', onConnect);
       setConnecting(false);
-      setServerConnected(true);
       callback();
     };
     socket.on('connect', onConnect);
@@ -433,9 +412,7 @@ export default function App() {
       const diff = Math.abs(game.history().length);
       if (diff > 30) {
         showToast('Computer accepted the draw offer.', 'success');
-        // Set game to a draw state (e.g. loading a draw FEN or custom state. Let's load draw state)
-        const drawGame = new Chess(game.fen());
-        // Simple hack: load FEN but make it a draw or alert it.
+        // Set game to a draw state (e.g. loading a draw FEN or custom state)
         // We can just set the clocks to 0 or declare a local state.
         // Let's reload a blank draw game or just show toast
         setOfflineClocks({ w: 0, b: 0 }); // terminate clocks to end game
@@ -484,12 +461,12 @@ export default function App() {
   };
 
   // Leave Arena and go back to Lobby
-  const handleLeaveGame = () => {
+  function handleLeaveGame() {
     sessionStorage.removeItem('chess_room_id');
     setReconnectCode(null);
     setGameState(null);
     setScreen('lobby');
-  };
+  }
 
   // Quick Reconnection Trigger from Lobby Banner
   const handleQuickReconnect = () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle } from 'lucide-react';
 
 export default function ChatBox({ chatHistory, onSendMessage, active, gameOver }) {

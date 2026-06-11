@@ -122,7 +122,7 @@ export const PIECE_INFO = {
 };
 
 // ==================== MOVE QUALITY EVALUATION ====================
-export function evaluateMove(game, move, difficulty = 'easy') {
+export function evaluateMove(game, move) {
   const fen = game.fen();
   
   // Get score before move

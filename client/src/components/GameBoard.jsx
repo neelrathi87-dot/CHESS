@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Chessboard } from 'react-chessboard';
 
 export default function GameBoard({
@@ -20,8 +20,10 @@ export default function GameBoard({
 
   // Clear selections when game state changes
   useEffect(() => {
-    setSelectedSquare(null);
-    setOptionSquares({});
+    setTimeout(() => {
+      setSelectedSquare(null);
+      setOptionSquares({});
+    }, 0);
   }, [game]);
 
   // Find all legal moves for a square

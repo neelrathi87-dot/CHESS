@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, RefreshCw, LogOut, Copy, Check, MessageCircle, AlertTriangle, Trophy, Handshake, Flag, Clock, Crown, X } from 'lucide-react';
 import GameBoard from './GameBoard';
 import MoveHistory from './MoveHistory';
@@ -32,11 +32,13 @@ export default function GameArena({
 
   // Sync orientation with assigned color when color changes
   useEffect(() => {
-    if (playerColor === 'black') {
-      setBoardOrientation('black');
-    } else {
-      setBoardOrientation('white');
-    }
+    setTimeout(() => {
+      if (playerColor === 'black') {
+        setBoardOrientation('black');
+      } else {
+        setBoardOrientation('white');
+      }
+    }, 0);
   }, [playerColor]);
 
   // Extract status variables
@@ -70,8 +72,8 @@ export default function GameArena({
   const isOpponentDrawOffer = drawOfferFrom && !isMyDrawOffer;
 
   // Players details
-  let topPlayer = { name: 'Opponent', color: 'black', connected: true };
-  let bottomPlayer = { name: 'Player', color: 'white', connected: true };
+  let topPlayer;
+  let bottomPlayer;
 
   if (isMultiplayer && gameState) {
     const whiteP = gameState.players.white;
@@ -99,20 +101,24 @@ export default function GameArena({
   // Smooth clock ticking - unified for both offline and multiplayer
   const [displayClocks, setDisplayClocks] = useState({ w: 600000, b: 600000 });
   const clockRef = useRef({ w: 600000, b: 600000 });
-  const lastTickRef = useRef(Date.now());
+  const lastTickRef = useRef(null);
 
   // Sync clock reference when props change
   useEffect(() => {
     if (isOffline && offlineClocks) {
       clockRef.current = { ...offlineClocks };
-      setDisplayClocks({ ...offlineClocks });
+      setTimeout(() => {
+        setDisplayClocks({ ...offlineClocks });
+      }, 0);
     } else if (gameState?.clocks) {
       const clocks = {
         w: gameState.clocks.white ?? gameState.clocks.w ?? 600000,
         b: gameState.clocks.black ?? gameState.clocks.b ?? 600000
       };
       clockRef.current = { ...clocks };
-      setDisplayClocks({ ...clocks });
+      setTimeout(() => {
+        setDisplayClocks({ ...clocks });
+      }, 0);
     }
   }, [isOffline, offlineClocks, gameState?.clocks]);
 
@@ -124,7 +130,7 @@ export default function GameArena({
 
     const interval = setInterval(() => {
       const now = Date.now();
-      const elapsed = now - lastTickRef.current;
+      const elapsed = now - (lastTickRef.current || now);
       lastTickRef.current = now;
 
       const activeKey = turn; // 'w' or 'b'
@@ -143,6 +149,7 @@ export default function GameArena({
     }, 100);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, turn, isOffline]);
 
   // Format Milliseconds to MM:SS

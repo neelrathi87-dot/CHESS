@@ -122,7 +122,6 @@ function detectPhase(game) {
   const board = game.board();
   let totalPieces = 0;
   let queens = 0;
-  let minorMajor = 0;
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
@@ -130,13 +129,10 @@ function detectPhase(game) {
       if (sq && sq.type !== 'k' && sq.type !== 'p') {
         totalPieces++;
         if (sq.type === 'q') queens++;
-        if (sq.type === 'n' || sq.type === 'b' || sq.type === 'r') minorMajor++;
       }
     }
   }
-
   const moveCount = game.history().length;
-
   // Opening: first ~12 moves and most pieces still on board
   if (moveCount < 12 && totalPieces >= 12) return 'opening';
 
@@ -177,7 +173,6 @@ function getOpeningBonus(game) {
   }
 
   // Reward castling
-  const fen = game.fen();
   // If White has castled (no castling rights left and king not on e1)
   const whiteKingPos = findKing(board, 'w');
   const blackKingPos = findKing(board, 'b');

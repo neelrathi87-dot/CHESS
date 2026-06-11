@@ -1,23 +1,87 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
-import { GraduationCap, BookOpen, Lightbulb, AlertTriangle, Undo2, ChevronRight, ChevronLeft, Info, Shield } from 'lucide-react';
+import { GraduationCap, BookOpen, Lightbulb, Undo2, ChevronRight, ChevronLeft, Shield, Volume2, VolumeX } from 'lucide-react';
 import { PIECE_INFO, getPositionTips, detectThreats, evaluateMove, CHESS_PRINCIPLES } from '../utils/learnHelper';
 
-export default function LearnAssistant({ game, playerColor, onUndo, lastMove, canUndo, moveHistory }) {
+export default function LearnAssistant({ game, playerColor, onUndo, canUndo, moveHistory }) {
   const [tab, setTab] = useState('assistant'); // 'assistant' | 'pieces' | 'principles'
   const [selectedPiece, setSelectedPiece] = useState(null);
-  const [moveEval, setMoveEval] = useState(null);
   const [principleIdx, setPrincipleIdx] = useState(0);
   const [assistantMessages, setAssistantMessages] = useState([
     { type: 'welcome', text: '👋 Welcome to Learn Mode! I\'ll guide you through the game. Click on pieces to learn about them, and I\'ll evaluate your moves!' }
   ]);
   const messagesEndRef = useRef(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceAsked, setVoiceAsked] = useState(false);
+  const prevMsgCountRef = useRef(1); // starts at 1 for the welcome message
+
+  // Clean up speech on unmount
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Speak function using Web Speech API
+  const speak = (text) => {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    // Strip emojis and special chars for cleaner speech
+    // eslint-disable-next-line no-misleading-character-class
+    const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').trim();
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.lang = 'en-US';
+    // Try to use a good voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
+                      voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utterance.voice = preferred;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Enable voice with user interaction (required by browsers)
+  const enableVoice = () => {
+    setVoiceEnabled(true);
+    setVoiceAsked(true);
+    // Trigger a silent speak to unlock audio context
+    if (window.speechSynthesis) {
+      const unlock = new SpeechSynthesisUtterance('');
+      window.speechSynthesis.speak(unlock);
+      // Speak welcome after a tiny delay
+      setTimeout(() => {
+        speak('Welcome to Learn Mode! I will guide you through the game. Let\'s begin!');
+      }, 200);
+    }
+  };
+
+  const disableVoice = () => {
+    setVoiceEnabled(false);
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  };
 
   // Auto-scroll assistant messages
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
+    // Auto-speak new messages
+    if (voiceEnabled && assistantMessages.length > prevMsgCountRef.current) {
+      const newMsgs = assistantMessages.slice(prevMsgCountRef.current);
+      const toSpeak = newMsgs.map(m => {
+        if (m.type === 'eval') return `${m.quality}. ${m.text}`;
+        return m.text;
+      }).join('. ');
+      speak(toSpeak);
+    }
+    prevMsgCountRef.current = assistantMessages.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistantMessages]);
 
   // Track move count for the effect
@@ -42,21 +106,24 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
         cloned.undo();
         const eval_ = evaluateMove(cloned, latestMove);
 
-        setMoveEval(eval_);
-        setAssistantMessages(prev => [...prev, {
-          type: 'eval',
-          emoji: eval_.emoji,
-          quality: eval_.quality,
-          color: eval_.color,
-          text: eval_.message,
-          move: latestMove.san
-        }]);
-      } catch (e) {
+        setTimeout(() => {
+          setAssistantMessages(prev => [...prev, {
+            type: 'eval',
+            emoji: eval_.emoji,
+            quality: eval_.quality,
+            color: eval_.color,
+            text: eval_.message,
+            move: latestMove.san
+          }]);
+        }, 0);
+      } catch {
         // Fallback if evaluation errors
-        setAssistantMessages(prev => [...prev, {
-          type: 'tip',
-          text: `You played ${latestMove.san}. Keep developing your pieces!`
-        }]);
+        setTimeout(() => {
+          setAssistantMessages(prev => [...prev, {
+            type: 'tip',
+            text: `You played ${latestMove.san}. Keep developing your pieces!`
+          }]);
+        }, 0);
       }
     } else {
       // AI / Opponent moved — explain what happened + give tips
@@ -96,8 +163,11 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
         });
       }
 
-      setAssistantMessages(prev => [...prev, ...newMessages]);
+      setTimeout(() => {
+        setAssistantMessages(prev => [...prev, ...newMessages]);
+      }, 0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moveCount]);
 
   const pieceTypes = ['p', 'n', 'b', 'r', 'q', 'k'];
@@ -137,6 +207,32 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
         {/* ASSISTANT TAB */}
         {tab === 'assistant' && (
           <div className="flex flex-col h-full">
+            {/* Voice Permission Banner */}
+            {!voiceAsked && (
+              <div className="p-3 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border-b border-violet-500/20 shrink-0">
+                <div className="flex items-center gap-3">
+                  <Volume2 className="w-8 h-8 text-violet-400 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-slate-200">Enable Voice Coaching?</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Hear your coach's instructions spoken out loud</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={enableVoice}
+                    className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" /> Yes, Enable Voice
+                  </button>
+                  <button
+                    onClick={() => setVoiceAsked(true)}
+                    className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold text-xs border border-slate-700 transition-all"
+                  >
+                    No, Text Only
+                  </button>
+                </div>
+              </div>
+            )}
             {/* Messages */}
             <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
               {assistantMessages.map((msg, idx) => (
@@ -164,14 +260,25 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Undo Button */}
-            <div className="p-2 border-t border-slate-800 shrink-0">
+            {/* Undo + Voice Buttons */}
+            <div className="p-2 border-t border-slate-800 shrink-0 flex gap-2">
               <button
                 onClick={onUndo}
                 disabled={!canUndo}
-                className="w-full py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 disabled:opacity-30 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-slate-950 disabled:opacity-30 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
               >
-                <Undo2 className="w-3.5 h-3.5" /> Undo Last Move
+                <Undo2 className="w-3.5 h-3.5" /> Undo Move
+              </button>
+              <button
+                onClick={voiceEnabled ? disableVoice : enableVoice}
+                className={`px-3 py-2 rounded-lg border font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                  voiceEnabled
+                    ? 'bg-violet-500/10 border-violet-500/20 text-violet-400 hover:bg-violet-500 hover:text-white'
+                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700 hover:text-slate-300'
+                }`}
+                title={voiceEnabled ? 'Turn off voice' : 'Turn on voice'}
+              >
+                {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
             </div>
           </div>

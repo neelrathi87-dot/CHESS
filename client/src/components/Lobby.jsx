@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Monitor, Users, Globe, ShieldAlert, Swords, Plus, Key, Search, X, GraduationCap } from 'lucide-react';
+import { useState } from 'react';
+import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap } from 'lucide-react';
 
 export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode }) {
   const [mode, setMode] = useState('learn'); // 'learn' | 'computer' | 'online' | 'multiplayer'
