@@ -15,6 +15,7 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
   const [voiceAsked, setVoiceAsked] = useState(false);
   const prevMsgCountRef = useRef(1); // starts at 1 for the welcome message
   const voiceEnabledRef = useRef(false); // ref to avoid stale closures
+  const chatContainerRef = useRef(null);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
     window.speechSynthesis.speak(utterance);
   };
 
+
   // Enable voice with user interaction (required by browsers)
   const enableVoice = () => {
     voiceEnabledRef.current = true; // set ref immediately so speak() works
@@ -84,8 +86,9 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
 
   // Auto-scroll assistant messages and auto-speak new ones
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    // Only scroll the chat container itself, don't drag the whole page
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
     // Auto-speak new messages (uses ref to avoid stale closure)
     if (voiceEnabledRef.current && assistantMessages.length > prevMsgCountRef.current) {
@@ -276,7 +279,7 @@ export default function LearnAssistant({ game, playerColor, onUndo, canUndo, mov
               </div>
             )}
             {/* Messages */}
-            <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
+            <div ref={chatContainerRef} className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0 scroll-smooth">
               {assistantMessages.map((msg, idx) => (
                 <div key={idx} className={`rounded-xl p-3 text-sm leading-relaxed ${
                   msg.type === 'welcome' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' :
