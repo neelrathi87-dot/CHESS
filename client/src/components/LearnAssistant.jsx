@@ -150,7 +150,7 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
 
         {/* PIECES TAB */}
         {tab === 'pieces' && (
-          <div className="p-2">
+          <div className="p-2 h-full overflow-y-auto">
             {!selectedPiece ? (
               <div className="space-y-2">
                 <p className="text-[10px] text-slate-500 text-center italic mb-2">Tap a piece to learn about it</p>
@@ -161,7 +161,7 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
                       <button
                         key={type}
                         onClick={() => setSelectedPiece(type)}
-                        className="flex flex-col items-center gap-1 p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all"
+                        className="flex flex-col items-center gap-1 p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all active:scale-95"
                       >
                         <span className="text-3xl select-none">{info.symbol}</span>
                         <span className="text-[10px] font-semibold text-slate-300">{info.name}</span>
@@ -172,17 +172,17 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 pb-4">
                 {/* Back button */}
                 <button
                   onClick={() => setSelectedPiece(null)}
-                  className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5 font-semibold"
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5 font-semibold sticky top-0 bg-slate-900/90 backdrop-blur-sm py-1 z-10 w-full"
                 >
-                  <ChevronLeft className="w-3 h-3" /> All Pieces
+                  <ChevronLeft className="w-3 h-3" /> ← Back to All Pieces
                 </button>
 
                 {/* Piece header */}
-                <div className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 p-3 rounded-xl border border-indigo-500/20">
                   <span className="text-4xl select-none">{PIECE_INFO[selectedPiece].symbol}</span>
                   <div>
                     <h4 className="text-sm font-bold text-slate-100">{PIECE_INFO[selectedPiece].name}</h4>
@@ -191,33 +191,35 @@ export default function LearnAssistant({ game, playerColor, onUndo, lastMove, ca
                 </div>
 
                 {/* Description */}
-                <p className="text-[11px] text-slate-400 leading-relaxed">{PIECE_INFO[selectedPiece].description}</p>
+                <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-800">
+                  <p className="text-[11px] text-slate-300 leading-relaxed">{PIECE_INFO[selectedPiece].description}</p>
+                </div>
 
                 {/* Movement */}
-                <div>
-                  <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1 mb-1.5">
-                    <Shield className="w-3 h-3 text-teal-400" /> Movement
+                <div className="bg-teal-500/5 p-3 rounded-lg border border-teal-500/10">
+                  <h5 className="text-[10px] font-bold text-teal-300 uppercase tracking-wider flex items-center gap-1 mb-2">
+                    <Shield className="w-3 h-3 text-teal-400" /> How it Moves
                   </h5>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5">
                     {PIECE_INFO[selectedPiece].movement.map((m, i) => (
                       <li key={i} className="text-[10px] text-slate-400 flex items-start gap-1.5">
                         <ChevronRight className="w-3 h-3 text-teal-500 shrink-0 mt-0.5" />
-                        {m}
+                        <span>{m}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 {/* Tips */}
-                <div>
-                  <h5 className="text-[10px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                <div className="bg-amber-500/5 p-3 rounded-lg border border-amber-500/10">
+                  <h5 className="text-[10px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1 mb-2">
                     <Lightbulb className="w-3 h-3 text-amber-400" /> Strategy Tips
                   </h5>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5">
                     {PIECE_INFO[selectedPiece].tips.map((t, i) => (
                       <li key={i} className="text-[10px] text-slate-400 flex items-start gap-1.5">
                         <span className="text-amber-500 shrink-0">•</span>
-                        {t}
+                        <span>{t}</span>
                       </li>
                     ))}
                   </ul>

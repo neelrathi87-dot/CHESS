@@ -410,7 +410,7 @@ export default function GameArena({
           </div>
 
           {/* Learn Assistant / Chat Panel */}
-          <div className="shrink-0 h-[180px] lg:flex-1 lg:h-auto lg:min-h-0 overflow-hidden">
+          <div className={`${isLearnMode ? 'flex-1 min-h-0' : 'shrink-0 h-[140px] lg:flex-1 lg:h-auto lg:min-h-0'} overflow-hidden`}>
             {isLearnMode ? (
               <LearnAssistant
                 game={game}
