@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap } from 'lucide-react';
 
-export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode }) {
+export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount }) {
   const [mode, setMode] = useState('learn'); // 'learn' | 'computer' | 'online' | 'multiplayer'
   
   // Computer options
@@ -195,9 +195,17 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
         ) : mode === 'online' ? (
           /* PLAY ONLINE (RANDOM MATCHMAKING) PANEL */
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-fuchsia-400" /> Find Random Opponent
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-fuchsia-400" /> Find Random Opponent
+              </h2>
+              {onlinePlayersCount > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-xs font-bold text-emerald-400">{onlinePlayersCount} Online</span>
+                </div>
+              )}
+            </div>
             <p className="text-sm text-slate-400 -mt-3">
               Get matched with a random player online. Colors are assigned randomly.
             </p>

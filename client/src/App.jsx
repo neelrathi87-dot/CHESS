@@ -38,6 +38,7 @@ export default function App() {
   const [game, setGame] = useState(new Chess());
   const [playerColor, setPlayerColor] = useState('white'); // 'white' | 'black' | 'spectator'
   const [isOffline, setIsOffline] = useState(true);
+  const [onlinePlayersCount, setOnlinePlayersCount] = useState(0);
   const [toast, setToast] = useState(null); // { message, type }
 
   // Offline AI game states
@@ -99,6 +100,10 @@ export default function App() {
 
     socket.io.on('reconnect', () => {
       setConnecting(false);
+    });
+
+    socket.on('onlinePlayersCount', (count) => {
+      setOnlinePlayersCount(count);
     });
 
     socket.on('roomCreated', (state) => {
@@ -558,6 +563,7 @@ export default function App() {
               onCancelSearch={handleCancelSearch}
               isSearching={isSearching}
               onStartLearnMode={handleStartLearnMode}
+              onlinePlayersCount={onlinePlayersCount}
             />
           </div>
         ) : (

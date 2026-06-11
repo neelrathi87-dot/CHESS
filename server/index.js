@@ -23,6 +23,9 @@ app.get('/health', (req, res) => {
 // Socket connection
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+  
+  // Broadcast updated total online players count
+  io.emit('onlinePlayersCount', io.engine.clientsCount);
 
   // 1. Create Room
   socket.on('createRoom', ({ hostId, hostColor, username, timeLimit }) => {
@@ -214,6 +217,11 @@ io.on('connection', (socket) => {
   // 10. Disconnect
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
+    
+    // Broadcast updated total online players count (delayed slightly so the disconnect registers)
+    setTimeout(() => {
+      io.emit('onlinePlayersCount', io.engine.clientsCount);
+    }, 0);
     
     // Remove from matchmaking queue
     roomManager.removeFromQueueBySocket(socket.id);
