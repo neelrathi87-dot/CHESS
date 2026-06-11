@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap } from 'lucide-react';
 
 export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode }) {
@@ -17,6 +17,15 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
   // Online matchmaking options
   const [onlineUsername, setOnlineUsername] = useState(() => localStorage.getItem('chess_username') || '');
   const [onlineTimeLimit, setOnlineTimeLimit] = useState(10);
+
+  // Auto-save username to localStorage on type
+  useEffect(() => {
+    if (username) localStorage.setItem('chess_username', username);
+  }, [username]);
+
+  useEffect(() => {
+    if (onlineUsername) localStorage.setItem('chess_username', onlineUsername);
+  }, [onlineUsername]);
 
   const handleStartComputer = () => {
     onStartComputerGame(aiDifficulty, aiColor);
