@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import GameArena from './components/GameArena';
 
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Globe, Search } from 'lucide-react';
 
 // Socket connection singleton
 let socketInstance = null;
