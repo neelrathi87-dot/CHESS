@@ -59,7 +59,7 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
       {/* Title Header */}
       <div className="text-center mb-10">
         <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-teal-500 to-indigo-500 bg-clip-text text-transparent flex items-center justify-center gap-3">
-          <Swords className="w-12 h-12 text-teal-400 animate-pulse" /> ANTIGRAVITY CHESS
+          <Swords className="w-12 h-12 text-teal-400 animate-pulse" /> CHESS
         </h1>
         <p className="text-slate-400 mt-2 text-lg">Learn, practice, and play chess with anyone in the world</p>
       </div>

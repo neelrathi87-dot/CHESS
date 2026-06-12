@@ -582,7 +582,7 @@ export default function App() {
 
       {/* Modern Premium Footer */}
       <footer className="text-center py-5 border-t border-slate-900/60 bg-slate-950/80 text-[10px] text-slate-600 font-mono">
-        &copy; {new Date().getFullYear()} Antigravity Chess Arena &bull; Rules validated server-side &bull; Powered by React, Vite & Socket.io
+        &copy; {new Date().getFullYear()} CHESS &bull; Rules validated server-side &bull; Powered by React, Vite & Socket.io
       </footer>
     </div>
   );
