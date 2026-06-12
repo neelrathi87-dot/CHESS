@@ -92,6 +92,14 @@ class RoomManager {
       return { error: 'Game has already started in this room.' };
     }
 
+    // Prevent joining your own room as a second player
+    if (room.players.white && room.players.white.id === guestId) {
+      return { error: 'You are already in this room (as White).' };
+    }
+    if (room.players.black && room.players.black.id === guestId) {
+      return { error: 'You are already in this room (as Black).' };
+    }
+
     // Determine guest's color
     const guestPlayer = {
       id: guestId,
@@ -101,10 +109,13 @@ class RoomManager {
       reconnectTimeout: null
     };
 
+    let colorAssigned = null;
     if (!room.players.white) {
       room.players.white = guestPlayer;
+      colorAssigned = 'white';
     } else if (!room.players.black) {
       room.players.black = guestPlayer;
+      colorAssigned = 'black';
     } else {
       return { error: 'Room is full.' };
     }
@@ -113,7 +124,7 @@ class RoomManager {
     room.status = 'playing';
     room.lastMoveTimestamp = Date.now();
 
-    return { room, success: true };
+    return { room, success: true, color: colorAssigned };
   }
 
   reconnectPlayer(roomId, playerId, socketId) {
