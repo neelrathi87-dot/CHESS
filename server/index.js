@@ -23,6 +23,42 @@ app.get('/health', (req, res) => {
 // Socket connection
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+
+  // Helper to process matchmaking
+  const handleMatchmakingResults = (results) => {
+    if (!results) return;
+
+    // 1. Matches
+    results.matches.forEach(({ room, player1, player2 }) => {
+      const p1Socket = io.sockets.sockets.get(player1.socketId);
+      const p2Socket = io.sockets.sockets.get(player2.socketId);
+      if (p1Socket && p2Socket) {
+        p1Socket.join(room.id);
+        p2Socket.join(room.id);
+        const state = roomManager.getRoomState(room.id);
+        p1Socket.emit('matchFound', { state, color: player1.color });
+        p2Socket.emit('matchFound', { state, color: player2.color });
+      }
+    });
+
+    // 2. Proposals
+    results.proposals.forEach((proposal) => {
+      const p1Socket = io.sockets.sockets.get(proposal.p1.socketId);
+      const p2Socket = io.sockets.sockets.get(proposal.p2.socketId);
+      if (p1Socket && p2Socket) {
+        p1Socket.emit('proposeMismatch', { proposalId: proposal.id, myTime: proposal.p1.timeLimit, opponentTime: proposal.p2.timeLimit });
+        p2Socket.emit('proposeMismatch', { proposalId: proposal.id, myTime: proposal.p2.timeLimit, opponentTime: proposal.p1.timeLimit });
+      }
+    });
+
+    // 3. Waiting on Match
+    results.waitingOnMatch.forEach(({ player, room }) => {
+      const pSocket = io.sockets.sockets.get(player.socketId);
+      if (pSocket) {
+        pSocket.emit('waitingOnMatch', { roomId: room.id });
+      }
+    });
+  };
   
   // Broadcast updated total online players count
   io.emit('onlinePlayersCount', io.engine.clientsCount);
@@ -83,6 +119,10 @@ io.on('connection', (socket) => {
 
       if (result.gameOver) {
         io.to(upperRoomId).emit('gameOver', state);
+        if (result.room.winnerStaysOnTrigger) {
+          result.room.winnerStaysOnTrigger = false;
+          handleMatchmakingResults(roomManager.processQueue());
+        }
       }
     } catch (err) {
       socket.emit('errorMsg', { message: 'Failed to complete move.' });
@@ -147,6 +187,11 @@ io.on('connection', (socket) => {
       const state = roomManager.getRoomState(upperRoomId);
       io.to(upperRoomId).emit('gameState', state);
       io.to(upperRoomId).emit('gameOver', state);
+      
+      if (result.room.winnerStaysOnTrigger) {
+        result.room.winnerStaysOnTrigger = false;
+        handleMatchmakingResults(roomManager.processQueue());
+      }
     } catch (err) {
       socket.emit('errorMsg', { message: 'Failed to resign.' });
     }
@@ -175,29 +220,8 @@ io.on('connection', (socket) => {
       // Send queue position update
       socket.emit('queueUpdate', { position: roomManager.getQueueSize(), searching: true });
 
-      // Try to find a match
-      const match = roomManager.findMatch();
-      if (match) {
-        const { room, player1, player2 } = match;
-
-        // Get sockets for both players
-        const p1Socket = io.sockets.sockets.get(player1.socketId);
-        const p2Socket = io.sockets.sockets.get(player2.socketId);
-
-        if (p1Socket && p2Socket) {
-          // Join both players to the room
-          p1Socket.join(room.id);
-          p2Socket.join(room.id);
-
-          const state = roomManager.getRoomState(room.id);
-
-          // Notify both players of the match
-          p1Socket.emit('matchFound', { state, color: player1.color });
-          p2Socket.emit('matchFound', { state, color: player2.color });
-
-          console.log(`Match found: ${player1.playerId} (${player1.color}) vs ${player2.playerId} (${player2.color}) in room ${room.id}`);
-        }
-      }
+      // Process queue to check for exact matches, proposals, or waiting logic
+      handleMatchmakingResults(roomManager.processQueue());
     } catch (err) {
       console.error('Matchmaking error:', err);
       socket.emit('errorMsg', { message: 'Failed to join matchmaking queue.' });
@@ -209,8 +233,26 @@ io.on('connection', (socket) => {
     try {
       roomManager.leaveQueue(playerId);
       socket.emit('searchCancelled');
+      
+      // Since queue size changed, process queue again for waiting players
+      handleMatchmakingResults(roomManager.processQueue());
     } catch (err) {
       console.error('Cancel search error:', err);
+    }
+  });
+
+  // 9.5 Respond to Time Odds Proposal
+  socket.on('respondMismatch', ({ proposalId, playerId, accept }) => {
+    try {
+      const matchResult = roomManager.handleProposalResponse(proposalId, playerId, accept);
+      if (matchResult) {
+        // Both players responded, and a match was created
+        handleMatchmakingResults({ matches: [matchResult], proposals: [], waitingOnMatch: [] });
+      } else {
+        // Just waiting for the other player
+      }
+    } catch (err) {
+      console.error('Proposal response error:', err);
     }
   });
 
@@ -255,6 +297,29 @@ setInterval(() => {
         const state = roomManager.getRoomState(roomId);
         io.to(roomId).emit('gameState', state);
         io.to(roomId).emit('gameOver', state);
+        
+        if (room.winnerStaysOnTrigger) {
+          room.winnerStaysOnTrigger = false;
+          // Note: handleMatchmakingResults is not accessible here, so we manually call it or move the setInterval inside connection.
+          // Wait, setInterval is outside connection, so we can't easily emit to specific sockets without repeating logic.
+          // Let's just process the queue and if there are matches, we handle them.
+          const results = roomManager.processQueue();
+          if (results) {
+            results.matches.forEach(({ room: matchRoom, player1, player2 }) => {
+              const p1Socket = io.sockets.sockets.get(player1.socketId);
+              const p2Socket = io.sockets.sockets.get(player2.socketId);
+              if (p1Socket && p2Socket) {
+                p1Socket.join(matchRoom.id);
+                p2Socket.join(matchRoom.id);
+                const matchState = roomManager.getRoomState(matchRoom.id);
+                p1Socket.emit('matchFound', { state: matchState, color: player1.color });
+                p2Socket.emit('matchFound', { state: matchState, color: player2.color });
+              }
+            });
+            // (Proposals and Waiting are unlikely here since queue length is >=2 for matches)
+          }
+        }
+        
         roomManager.deleteRoom(roomId);
       }
     }

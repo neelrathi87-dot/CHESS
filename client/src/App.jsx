@@ -54,6 +54,8 @@ export default function App() {
   const [reconnectUsername, setReconnectUsername] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [mismatchProposal, setMismatchProposal] = useState(null);
+  const [waitingOnActiveMatch, setWaitingOnActiveMatch] = useState(null);
 
   const playerId = getOrCreatePlayerId();
   const socket = getSocket();
@@ -177,6 +179,8 @@ export default function App() {
     // Matchmaking events
     socket.on('matchFound', ({ state, color }) => {
       setIsSearching(false);
+      setMismatchProposal(null);
+      setWaitingOnActiveMatch(null);
       setGameState(state);
       setPlayerColor(color);
       setGame(new Chess(state.fen));
@@ -189,10 +193,22 @@ export default function App() {
 
     socket.on('searchCancelled', () => {
       setIsSearching(false);
+      setMismatchProposal(null);
+      setWaitingOnActiveMatch(null);
     });
 
     socket.on('queueUpdate', ({ searching }) => {
       setIsSearching(searching);
+    });
+
+    socket.on('proposeMismatch', ({ proposalId, myTime, opponentTime }) => {
+      setMismatchProposal({ proposalId, myTime, opponentTime });
+      setWaitingOnActiveMatch(null);
+    });
+
+    socket.on('waitingOnMatch', ({ roomId }) => {
+      setWaitingOnActiveMatch({ roomId });
+      setMismatchProposal(null);
     });
 
     return () => {
@@ -431,10 +447,18 @@ export default function App() {
     });
   };
 
+  const handleRespondMismatch = (accept) => {
+    if (!mismatchProposal) return;
+    socket.emit('respondMismatch', { proposalId: mismatchProposal.proposalId, playerId, accept });
+    setMismatchProposal(null); // Clear local UI
+  };
+
   // Cancel Match Search
   const handleCancelSearch = () => {
-    setIsSearching(false);
     socket.emit('cancelSearch', { playerId });
+    setMismatchProposal(null);
+    setWaitingOnActiveMatch(null);
+    setIsSearching(false);
   };
 
   // Resign active game
@@ -570,6 +594,56 @@ export default function App() {
                     className="bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition-all active:scale-95 shadow"
                   >
                     Reconnect
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Global Matchmaking Overlays */}
+            {mismatchProposal && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+                <div className="bg-slate-900 border border-teal-500/30 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-fade-in">
+                  <Globe className="w-12 h-12 text-teal-400 mx-auto mb-4" />
+                  <h2 className="text-xl font-bold text-slate-100 mb-2">Match Found!</h2>
+                  <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+                    An opponent is available but wants to play for <strong className="text-emerald-400">{mismatchProposal.opponentTime} min</strong>, while you requested <strong className="text-emerald-400">{mismatchProposal.myTime} min</strong>. 
+                    <br/><br/>
+                    Do you want to play a Time Odds match keeping your requested times? (If either player declines, both clocks will be set to the average time).
+                  </p>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => handleRespondMismatch(false)}
+                      className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-colors"
+                    >
+                      No, Play Average
+                    </button>
+                    <button 
+                      onClick={() => handleRespondMismatch(true)}
+                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white rounded-lg font-semibold shadow-lg transition-colors"
+                    >
+                      Yes, Play Time Odds
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {waitingOnActiveMatch && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+                <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-fade-in">
+                  <Search className="w-12 h-12 text-indigo-400 mx-auto mb-4 animate-pulse" />
+                  <h2 className="text-xl font-bold text-slate-100 mb-2">You are next!</h2>
+                  <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+                    We found an ongoing game that is about to finish. You will automatically be matched against the winner as soon as it ends.
+                  </p>
+                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden mb-6">
+                    <div className="bg-gradient-to-r from-indigo-500 to-fuchsia-500 h-full rounded-full w-full animate-pulse"></div>
+                  </div>
+                  <button 
+                    onClick={handleCancelSearch}
+                    className="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    Cancel Matchmaking
                   </button>
                 </div>
               </div>

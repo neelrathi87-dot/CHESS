@@ -3,8 +3,9 @@ const { Chess } = require('chess.js');
 class RoomManager {
   constructor() {
     this.rooms = new Map();
-    // Matchmaking queue: array of { playerId, socketId, username, timeLimit, joinedAt }
+    // Matchmaking queue: array of { playerId, socketId, username, timeLimit, joinedAt, waitingOnRoomId }
     this.matchQueue = [];
+    this.proposals = new Map(); // Store active mismatched time proposals
   }
 
   // Generate a random 6-character room code
@@ -227,6 +228,7 @@ class RoomManager {
       room.status = 'timeout';
       room.winner = activeColor === 'white' ? 'black' : 'white';
       room.reason = 'timeout';
+      this.checkWinnerStaysOn(room);
     }
   }
 
@@ -273,12 +275,12 @@ class RoomManager {
       room.drawOfferFrom = null;
 
       // Check game end states
-      let gameOver = false;
       if (room.game.isCheckmate()) {
         room.status = 'checkmate';
         room.winner = playerColor === 'w' ? 'white' : 'black';
         room.reason = 'checkmate';
         gameOver = true;
+        this.checkWinnerStaysOn(room);
       } else if (room.game.isDraw()) {
         room.status = 'draw';
         gameOver = true;
@@ -352,6 +354,7 @@ class RoomManager {
     room.winner = loserColor === 'white' ? 'black' : 'white';
     room.reason = 'resignation';
 
+    this.checkWinnerStaysOn(room);
     return { room, gameOver: true };
   }
 
@@ -418,7 +421,6 @@ class RoomManager {
 
   // Add player to matchmaking queue
   joinQueue(playerId, socketId, username, timeLimit) {
-    // Remove if already in queue
     this.leaveQueue(playerId);
 
     this.matchQueue.push({
@@ -426,7 +428,8 @@ class RoomManager {
       socketId,
       username: username || 'Player',
       timeLimit: timeLimit || 10,
-      joinedAt: Date.now()
+      joinedAt: Date.now(),
+      waitingOnRoomId: null
     });
 
     console.log(`Player ${playerId} joined matchmaking queue. Queue size: ${this.matchQueue.length}`);
@@ -446,89 +449,168 @@ class RoomManager {
     this.matchQueue = this.matchQueue.filter(p => p.socketId !== socketId);
   }
 
-  // Try to find a match - returns { player1, player2, room } or null
-  findMatch() {
-    if (this.matchQueue.length < 2) return null;
+  // Try to find matches and process proposals/waiting states
+  processQueue() {
+    let results = {
+      matches: [],
+      proposals: [],
+      waitingOnMatch: []
+    };
 
-    let player1Index = -1;
-    let player2Index = -1;
+    if (this.matchQueue.length === 0) return results;
 
-    // Find the first pair of players with the SAME time limit
-    for (let i = 0; i < this.matchQueue.length; i++) {
+    // First pass: Exact time matches
+    let i = 0;
+    while (i < this.matchQueue.length) {
+      let matched = false;
       for (let j = i + 1; j < this.matchQueue.length; j++) {
         if (this.matchQueue[i].timeLimit === this.matchQueue[j].timeLimit) {
-          player1Index = i;
-          player2Index = j;
+          const p1 = this.matchQueue[i];
+          const p2 = this.matchQueue[j];
+          this.matchQueue.splice(j, 1);
+          this.matchQueue.splice(i, 1);
+          
+          const roomData = this.createMatchmadeRoom(p1, p2, p1.timeLimit, p2.timeLimit);
+          results.matches.push(roomData);
+          matched = true;
           break;
         }
       }
-      if (player1Index !== -1) break;
+      if (!matched) i++;
     }
 
-    // No matching pair found yet
-    if (player1Index === -1) return null;
+    // Second pass: Mismatched pairs (if any even pairs left)
+    while (this.matchQueue.length >= 2) {
+      const p1 = this.matchQueue.shift();
+      const p2 = this.matchQueue.shift();
+      
+      const proposalId = this.generateRoomId();
+      const proposal = {
+        id: proposalId,
+        p1, p2,
+        p1Accept: null, p2Accept: null,
+        createdAt: Date.now()
+      };
+      this.proposals.set(proposalId, proposal);
+      results.proposals.push(proposal);
+    }
 
-    const player1 = this.matchQueue[player1Index];
-    const player2 = this.matchQueue[player2Index];
+    // Third pass: The single odd player left in the queue
+    if (this.matchQueue.length === 1) {
+      const oddPlayer = this.matchQueue[0];
+      
+      let bestRoom = null;
+      let lowestTime = Infinity;
+      for (const room of this.rooms.values()) {
+        if (room.status === 'playing' && room.isMatchmade) {
+          const totalTime = room.clocks.white + room.clocks.black;
+          if (totalTime < lowestTime) {
+            lowestTime = totalTime;
+            bestRoom = room;
+          }
+        }
+      }
 
-    // Remove them from the queue (remove the higher index first to avoid shifting)
-    this.matchQueue.splice(player2Index, 1);
-    this.matchQueue.splice(player1Index, 1);
+      if (bestRoom) {
+        oddPlayer.waitingOnRoomId = bestRoom.id;
+        results.waitingOnMatch.push({ player: oddPlayer, room: bestRoom });
+      }
+    }
 
-    const timeLimit = player1.timeLimit;
+    return results;
+  }
 
-    // Randomly assign colors
+  createMatchmadeRoom(p1, p2, p1Time, p2Time) {
     const p1IsWhite = Math.random() < 0.5;
 
     const whitePlayer = {
-      id: p1IsWhite ? player1.playerId : player2.playerId,
-      socketId: p1IsWhite ? player1.socketId : player2.socketId,
-      username: p1IsWhite ? player1.username : player2.username,
+      id: p1IsWhite ? p1.playerId : p2.playerId,
+      socketId: p1IsWhite ? p1.socketId : p2.socketId,
+      username: p1IsWhite ? p1.username : p2.username,
       connected: true,
       reconnectTimeout: null
     };
 
     const blackPlayer = {
-      id: p1IsWhite ? player2.playerId : player1.playerId,
-      socketId: p1IsWhite ? player2.socketId : player1.socketId,
-      username: p1IsWhite ? player2.username : player1.username,
+      id: p1IsWhite ? p2.playerId : p1.playerId,
+      socketId: p1IsWhite ? p2.socketId : p1.socketId,
+      username: p1IsWhite ? p2.username : p1.username,
       connected: true,
       reconnectTimeout: null
     };
 
     const roomId = this.generateRoomId();
-    const timeLimitMs = timeLimit * 60 * 1000;
+    const whiteTimeMs = (p1IsWhite ? p1Time : p2Time) * 60 * 1000;
+    const blackTimeMs = (p1IsWhite ? p2Time : p1Time) * 60 * 1000;
 
     const room = {
       id: roomId,
-      players: {
-        white: whitePlayer,
-        black: blackPlayer
-      },
+      players: { white: whitePlayer, black: blackPlayer },
       game: new Chess(),
-      status: 'playing', // Start immediately
-      timeLimit: timeLimitMs,
-      clocks: {
-        white: timeLimitMs,
-        black: timeLimitMs
-      },
+      status: 'playing',
+      timeLimit: Math.max(whiteTimeMs, blackTimeMs),
+      clocks: { white: whiteTimeMs, black: blackTimeMs },
       lastMoveTimestamp: Date.now(),
-      drawOfferFrom: null,
-      chat: [],
-      winner: null,
-      reason: null,
-      isMatchmade: true // Flag to identify matchmade games
+      drawOfferFrom: null, chat: [], winner: null, reason: null,
+      isMatchmade: true
     };
 
     this.rooms.set(roomId, room);
+    return { room, player1: { ...p1, color: p1IsWhite ? 'white' : 'black' }, player2: { ...p2, color: p1IsWhite ? 'black' : 'white' } };
+  }
 
-    console.log(`Matchmaking: ${player1.playerId} vs ${player2.playerId} in room ${roomId}`);
+  handleProposalResponse(proposalId, playerId, accept) {
+    const proposal = this.proposals.get(proposalId);
+    if (!proposal) return null;
 
-    return {
-      room,
-      player1: { ...player1, color: p1IsWhite ? 'white' : 'black' },
-      player2: { ...player2, color: p1IsWhite ? 'black' : 'white' }
-    };
+    if (proposal.p1.playerId === playerId) proposal.p1Accept = accept;
+    if (proposal.p2.playerId === playerId) proposal.p2Accept = accept;
+
+    if (proposal.p1Accept !== null && proposal.p2Accept !== null) {
+      this.proposals.delete(proposalId);
+      
+      let p1Time = proposal.p1.timeLimit;
+      let p2Time = proposal.p2.timeLimit;
+
+      if (!proposal.p1Accept || !proposal.p2Accept) {
+        // If anyone declined, play average time
+        const average = (p1Time + p2Time) / 2;
+        p1Time = average;
+        p2Time = average;
+      }
+
+      return this.createMatchmadeRoom(proposal.p1, proposal.p2, p1Time, p2Time);
+    }
+    return null;
+  }
+
+  checkWinnerStaysOn(room) {
+    if (!room.winner || !room.isMatchmade) return;
+    
+    // Find if anyone in the queue is waiting on this room
+    const waitingPlayerIndex = this.matchQueue.findIndex(p => p.waitingOnRoomId === room.id);
+    if (waitingPlayerIndex !== -1) {
+      const waitingPlayer = this.matchQueue[waitingPlayerIndex];
+      this.matchQueue.splice(waitingPlayerIndex, 1);
+      
+      const winnerColor = room.winner; // 'white' or 'black'
+      const winnerPlayer = room.players[winnerColor];
+      
+      if (winnerPlayer && winnerPlayer.connected) {
+        // Construct queue object for winner to match with waiting player
+        const winnerQueueObj = {
+          playerId: winnerPlayer.id,
+          socketId: winnerPlayer.socketId,
+          username: winnerPlayer.username,
+          timeLimit: room.timeLimit / (60 * 1000) // Default back to room max
+        };
+        // Re-inject them and process immediately
+        this.matchQueue.unshift(winnerQueueObj);
+        this.matchQueue.unshift(waitingPlayer);
+        // We trigger processing from index.js via an event or return object
+        room.winnerStaysOnTrigger = true;
+      }
+    }
   }
 
   // Get queue size
