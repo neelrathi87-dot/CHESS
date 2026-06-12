@@ -228,31 +228,47 @@ export default function App() {
       }, 0);
       
       // Artificial delay so the AI feels natural and user can see their last move
-      const thinkTime = offlineDifficulty === 'easy' ? 400 : (offlineDifficulty === 'medium' ? 600 : 800);
+      const thinkTime = offlineDifficulty === 'easy' ? 400 : 100;
       
-      const worker = new Worker(new URL('./utils/aiWorker.js', import.meta.url), { type: 'module' });
+      const worker = new Worker('/stockfish.js');
 
       const timer = setTimeout(() => {
-        worker.postMessage({ fen: game.fen(), difficulty: offlineDifficulty });
+        worker.postMessage('uci');
+        worker.postMessage(`position fen ${game.fen()}`);
+
+        let depth = 5;
+        let skillLevel = 5;
+        
+        if (offlineDifficulty === 'easy') { depth = 2; skillLevel = 0; }
+        else if (offlineDifficulty === 'medium') { depth = 8; skillLevel = 10; }
+        else if (offlineDifficulty === 'hard') { depth = 15; skillLevel = 20; }
+
+        worker.postMessage(`setoption name Skill Level value ${skillLevel}`);
+        worker.postMessage(`go depth ${depth}`);
         
         worker.onmessage = (e) => {
-          const { move, error } = e.data;
-          if (move && !error) {
-            try {
-              // Apply move to existing game, then clone with full history
-              game.move({ from: move.from, to: move.to, promotion: move.promotion });
-              const newGame = new Chess();
-              newGame.loadPgn(game.pgn());
-              setLastMove(newGame.history({ verbose: true }).slice(-1)[0] || null);
-              setGame(newGame);
-            } catch (err) {
-              console.error('AI move error:', err);
+          const msg = e.data;
+          // Look for 'bestmove e2e4'
+          if (typeof msg === 'string' && msg.startsWith('bestmove')) {
+            const moveStr = msg.split(' ')[1]; // e.g., 'e2e4' or 'e7e8q'
+            if (moveStr && moveStr !== '(none)') {
+              try {
+                const from = moveStr.substring(0, 2);
+                const to = moveStr.substring(2, 4);
+                const promotion = moveStr.length > 4 ? moveStr[4] : undefined;
+
+                game.move({ from, to, promotion });
+                const newGame = new Chess();
+                newGame.loadPgn(game.pgn());
+                setLastMove(newGame.history({ verbose: true }).slice(-1)[0] || null);
+                setGame(newGame);
+              } catch (err) {
+                console.error('Stockfish move error:', err);
+              }
             }
-          } else if (error) {
-            console.error('AI Worker error:', error);
+            setAiIsThinking(false);
+            worker.terminate();
           }
-          setAiIsThinking(false);
-          worker.terminate();
         };
       }, thinkTime);
 
