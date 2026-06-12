@@ -107,6 +107,7 @@ export default function GameArena({
   const [displayClocks, setDisplayClocks] = useState({ w: 600000, b: 600000 });
   const clockRef = useRef({ w: 600000, b: 600000 });
   const lastTickRef = useRef(null);
+  const lastParentSyncRef = useRef(null);
 
   // Sync clock reference when props change
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function GameArena({
     if (status !== 'playing') return;
 
     lastTickRef.current = Date.now();
+    lastParentSyncRef.current = Date.now();
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -147,9 +149,12 @@ export default function GameArena({
 
       setDisplayClocks({ ...clockRef.current });
 
-      // For offline mode, also update parent state every ~1 second
+      // For offline mode, sync parent state every ~1 second to avoid heavy re-renders
       if (isOffline) {
-        onTickOfflineClock();
+        if (now - lastParentSyncRef.current >= 1000 || clockRef.current[activeKey] <= 0) {
+          onTickOfflineClock(clockRef.current);
+          lastParentSyncRef.current = now;
+        }
       }
     }, 100);
 

@@ -469,17 +469,9 @@ export default function App() {
     });
   };
 
-  // Tick Offline Game Clock (runs every 100ms)
-  const handleTickOfflineClock = () => {
-    const turn = game.turn(); // 'w' or 'b'
-    setOfflineClocks((prev) => {
-      const activeColor = turn === 'w' ? 'w' : 'b';
-      const updatedTime = Math.max(0, prev[activeColor] - 100);
-      return {
-        ...prev,
-        [activeColor]: updatedTime
-      };
-    });
+  // Sync Offline Game Clock from GameArena (runs once per second)
+  const handleTickOfflineClock = (newClocks) => {
+    setOfflineClocks(newClocks);
   };
 
   // Leave Arena and go back to Lobby
