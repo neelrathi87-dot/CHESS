@@ -279,6 +279,13 @@ io.on('connection', (socket) => {
       } else if (action === 'game_over') {
         io.to(roomId).emit('gameState', data);
         io.to(roomId).emit('gameOver', data);
+        
+        const r = roomManager.rooms.get(roomId);
+        if (r && r.winnerStaysOnTrigger) {
+          r.winnerStaysOnTrigger = false;
+          handleMatchmakingResults(roomManager.processQueue());
+        }
+        
         roomManager.deleteRoom(roomId);
       }
     });

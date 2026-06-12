@@ -203,7 +203,8 @@ class RoomManager {
             room.status = 'resigned';
             room.winner = color === 'white' ? 'black' : 'white';
             room.reason = 'disconnection_timeout';
-            callback(roomId, 'game_over', room);
+            this.checkWinnerStaysOn(room);
+            callback(roomId, 'game_over', this.getRoomState(roomId));
           }
         }, 30000); // 30 seconds
 
