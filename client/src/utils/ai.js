@@ -515,22 +515,22 @@ export function getComputerMove(game, difficulty) {
     }
   }
 
-  // Medium: depth 1, pick from top 3-4 with noise
+  // Medium: depth 3, pick from top 3-4 with noise
   if (difficulty === 'medium') {
     const noiseLevel = phase === 'opening' ? 40 : phase === 'middlegame' ? 20 : 10;
     const topN = phase === 'opening' ? 4 : 3;
 
-    const topMoves = getTopMoves(game, 1, isMaximizing, noiseLevel, topN);
+    const topMoves = getTopMoves(game, 3, isMaximizing, noiseLevel, topN);
     if (topMoves.length === 0) return moves[0];
     return topMoves[Math.floor(Math.random() * topMoves.length)].move;
   }
 
-  // Hard: depth 2, weighted selection from top 2-3
+  // Hard: depth 4, weighted selection from top 2-3
   if (difficulty === 'hard') {
     const noiseLevel = phase === 'opening' ? 20 : phase === 'middlegame' ? 8 : 5;
     const topN = phase === 'opening' ? 3 : 2;
 
-    const topMoves = getTopMoves(game, 2, isMaximizing, noiseLevel, topN);
+    const topMoves = getTopMoves(game, 4, isMaximizing, noiseLevel, topN);
     if (topMoves.length === 0) return moves[0];
 
     // Weighted random: strongly favor best move

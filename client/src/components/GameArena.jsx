@@ -313,16 +313,18 @@ export default function GameArena({
           </div>
 
           {/* Board Rendering - flex-1 to fill available space */}
-          <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0">
-            <div className="w-full max-w-full" style={{ aspectRatio: '1/1', maxHeight: '100%' }}>
-              <GameBoard
-                game={game}
-                onMove={onMove}
-                onPieceSelect={handlePieceSelect}
-                playerColor={playerColor}
-                boardOrientation={boardOrientation}
-                interactive={status === 'playing'}
-              />
+          <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0 overflow-hidden">
+            <div className="aspect-square w-full h-full max-w-full max-h-full mx-auto flex items-center justify-center">
+              <div className="w-full h-full" style={{ maxHeight: '100%', maxWidth: '100%' }}>
+                <GameBoard
+                  game={game}
+                  onMove={onMove}
+                  onPieceSelect={handlePieceSelect}
+                  playerColor={playerColor}
+                  boardOrientation={boardOrientation}
+                  interactive={status === 'playing'}
+                />
+              </div>
             </div>
           </div>
 

@@ -3,7 +3,7 @@ import { Chess } from 'chess.js';
 import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import GameArena from './components/GameArena';
-import { getComputerMove } from './utils/ai';
+
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
 // Socket connection singleton
@@ -230,24 +230,36 @@ export default function App() {
       // Artificial delay so the AI feels natural and user can see their last move
       const thinkTime = offlineDifficulty === 'easy' ? 400 : (offlineDifficulty === 'medium' ? 600 : 800);
       
+      const worker = new Worker(new URL('./utils/aiWorker.js', import.meta.url), { type: 'module' });
+
       const timer = setTimeout(() => {
-        const move = getComputerMove(game, offlineDifficulty);
-        if (move) {
-          try {
-            // Apply move to existing game, then clone with full history
-            game.move({ from: move.from, to: move.to, promotion: move.promotion });
-            const newGame = new Chess();
-            newGame.loadPgn(game.pgn());
-            setLastMove(newGame.history({ verbose: true }).slice(-1)[0] || null);
-            setGame(newGame);
-          } catch {
-            console.error('AI move error');
+        worker.postMessage({ fen: game.fen(), difficulty: offlineDifficulty });
+        
+        worker.onmessage = (e) => {
+          const { move, error } = e.data;
+          if (move && !error) {
+            try {
+              // Apply move to existing game, then clone with full history
+              game.move({ from: move.from, to: move.to, promotion: move.promotion });
+              const newGame = new Chess();
+              newGame.loadPgn(game.pgn());
+              setLastMove(newGame.history({ verbose: true }).slice(-1)[0] || null);
+              setGame(newGame);
+            } catch (err) {
+              console.error('AI move error:', err);
+            }
+          } else if (error) {
+            console.error('AI Worker error:', error);
           }
-        }
-        setAiIsThinking(false);
+          setAiIsThinking(false);
+          worker.terminate();
+        };
       }, thinkTime);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        worker.terminate();
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, playerColor, isOffline, offlineDifficulty, screen]);
