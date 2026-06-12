@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Chessboard } from 'react-chessboard';
 
 export default function GameBoard({
@@ -12,6 +12,7 @@ export default function GameBoard({
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [optionSquares, setOptionSquares] = useState({});
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
+  const lastMoveFenRef = useRef(null);
 
   const turn = game.turn(); // 'w' or 'b'
   const isMyTurn = interactive && (
@@ -21,6 +22,7 @@ export default function GameBoard({
 
   // Clear selections when game state changes
   useEffect(() => {
+    lastMoveFenRef.current = null;
     setTimeout(() => {
       setSelectedSquare(null);
       setOptionSquares({});
@@ -96,16 +98,25 @@ export default function GameBoard({
       const validMove = moves.find((m) => m.to === square);
 
       if (validMove) {
-        if (checkPromotion(selectedSquare, square)) {
-          setPendingPromotion({ from: selectedSquare, to: square });
-        } else {
-          onMove({
-            from: selectedSquare,
-            to: square
-          });
+        if (lastMoveFenRef.current === game.fen()) {
+          // Prevent double fire
           setSelectedSquare(null);
           setOptionSquares({});
+          return;
         }
+
+        if (checkPromotion(selectedSquare, square)) {
+          setPendingPromotion({ from: selectedSquare, to: square });
+          return;
+        }
+
+        lastMoveFenRef.current = game.fen();
+        onMove({
+          from: selectedSquare,
+          to: square
+        });
+        setSelectedSquare(null);
+        setOptionSquares({});
       } else {
         // If clicked on another of player's own pieces, change selection
         if (isOwnPiece) {
@@ -133,12 +144,14 @@ export default function GameBoard({
     const validMove = moves.find((m) => m.to === targetSquare);
 
     if (!validMove) return false;
+    if (lastMoveFenRef.current === game.fen()) return false;
 
     if (checkPromotion(sourceSquare, targetSquare)) {
       setPendingPromotion({ from: sourceSquare, to: targetSquare });
       return true;
     }
 
+    lastMoveFenRef.current = game.fen();
     onMove({
       from: sourceSquare,
       to: targetSquare
