@@ -287,6 +287,7 @@ class RoomManager {
       room.drawOfferFrom = null;
 
       // Check game end states
+      let gameOver = false;
       if (room.game.isCheckmate()) {
         room.status = 'checkmate';
         room.winner = playerColor === 'w' ? 'white' : 'black';
