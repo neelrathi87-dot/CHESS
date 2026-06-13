@@ -3,11 +3,11 @@ import { Send, MessageCircle } from 'lucide-react';
 
 export default function ChatBox({ chatHistory, onSendMessage, active, gameOver }) {
   const [inputText, setInputText] = useState('');
-  const chatBottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
-    if (chatBottomRef.current) {
-      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatHistory]);
 
@@ -54,7 +54,10 @@ export default function ChatBox({ chatHistory, onSendMessage, active, gameOver }
       )}
 
       {/* Messages */}
-      <div className="flex-1 p-3 overflow-y-auto space-y-2 min-h-0">
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 p-3 overflow-y-auto space-y-2 min-h-0 scroll-smooth"
+      >
         {chatHistory.length === 0 ? (
           <div className="flex items-center justify-center h-full text-slate-600 text-xs italic py-4">
             {gameOver ? 'Say GG or share a tip!' : 'Send a message to start chatting!'}
@@ -74,7 +77,6 @@ export default function ChatBox({ chatHistory, onSendMessage, active, gameOver }
             </div>
           ))
         )}
-        <div ref={chatBottomRef} />
       </div>
 
       {/* Input Form */}
