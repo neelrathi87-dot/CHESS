@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# Disallow internal API paths
+Disallow: /api/
+
+# Sitemap
 Sitemap: https://chess-beta-lac.vercel.app/sitemap.xml

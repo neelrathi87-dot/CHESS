@@ -4,56 +4,157 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- Primary Meta Tags -->
-    <title>CHESS - Live Multiplayer &amp; Minimax AI</title>
-    <meta name="title" content="CHESS - Live Multiplayer &amp; Minimax AI" />
-    <meta name="description" content="Play real-time chess with friends or challenge a custom Minimax AI engine. Featuring server-side move verification, active game reconnection, live chat, and a premium dark-themed interface." />
-    <meta name="keywords" content="chess, online chess, multiplayer chess, chess ai, minimax algorithm, play chess online, chess trainer, browser chess" />
+    <!-- ── Primary SEO ───────────────────────────────────────────────── -->
+    <title>CHESS – Free Online Multiplayer Chess with AI | Play Now</title>
+    <meta name="title" content="CHESS – Free Online Multiplayer Chess with AI | Play Now" />
+    <meta name="description" content="Play chess online for free. Challenge friends in real-time private rooms, find opponents via quick matchmaking, or train against an AI engine. Learn chess with our interactive coach. No account needed." />
+    <meta name="keywords" content="chess online, play chess free, multiplayer chess, chess AI, chess vs computer, online chess game, chess trainer, learn chess, chess with friends, real-time chess, chess app" />
     <meta name="author" content="CHESS" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="rating" content="general" />
 
-    <!-- ── PWA ─────────────────────────────────────────────────────── -->
+    <!-- ── Canonical URL ─────────────────────────────────────────────── -->
+    <link rel="canonical" href="https://chess-beta-lac.vercel.app/" />
+
+    <!-- ── Open Graph / Facebook / LinkedIn ─────────────────────────── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CHESS" />
+    <meta property="og:url" content="https://chess-beta-lac.vercel.app/" />
+    <meta property="og:title" content="CHESS – Free Online Multiplayer Chess with AI" />
+    <meta property="og:description" content="Play chess online for free. Real-time multiplayer, AI opponent, learn mode, and private rooms. No account needed — just click and play." />
+    <meta property="og:image" content="https://chess-beta-lac.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="CHESS - Free online multiplayer chess app" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ── Twitter / X Card ──────────────────────────────────────────── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@chess_app" />
+    <meta name="twitter:url" content="https://chess-beta-lac.vercel.app/" />
+    <meta name="twitter:title" content="CHESS – Free Online Multiplayer Chess with AI" />
+    <meta name="twitter:description" content="Play chess online for free. Real-time multiplayer, AI opponent, learn mode, and private rooms. No account needed." />
+    <meta name="twitter:image" content="https://chess-beta-lac.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="CHESS app preview" />
+
+    <!-- ── PWA Manifest ──────────────────────────────────────────────── -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Theme color (browser chrome / status bar) -->
+    <!-- ── Theme / Browser Chrome ───────────────────────────────────── -->
     <meta name="theme-color" content="#14b8a6" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14b8a6" />
+    <meta name="msapplication-TileColor" content="#020817" />
+    <meta name="msapplication-TileImage" content="/icon-192.png" />
 
-    <!-- iOS / Safari PWA support -->
+    <!-- ── iOS / Safari PWA ──────────────────────────────────────────── -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="CHESS" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
 
-    <!-- Prevent iOS from auto-detecting phone numbers / emails -->
-    <meta name="format-detection" content="telephone=no" />
-
-    <!-- Splash screen color for iOS -->
-    <meta name="msapplication-TileColor" content="#020817" />
-    <meta name="msapplication-TileImage" content="/icon-192.png" />
-
-    <!-- Favicon -->
+    <!-- ── Favicons ───────────────────────────────────────────────────── -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://chess-beta-lac.vercel.app/" />
-    <meta property="og:title" content="CHESS - Live Multiplayer &amp; Minimax AI" />
-    <meta property="og:description" content="Play real-time chess with friends or challenge a custom Minimax AI engine. Featuring server-side move verification, active game reconnection, live chat, and a premium dark-themed interface." />
-    <meta property="og:image" content="https://chess-beta-lac.vercel.app/og-image.jpg" />
+    <!-- ── Misc ──────────────────────────────────────────────────────── -->
+    <meta name="format-detection" content="telephone=no" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://chess-beta-lac.vercel.app/" />
-    <meta property="twitter:title" content="CHESS - Live Multiplayer &amp; Minimax AI" />
-    <meta property="twitter:description" content="Play real-time chess with friends or challenge a custom Minimax AI engine. Featuring server-side move verification, active game reconnection, live chat, and a premium dark-themed interface." />
-    <meta property="twitter:image" content="https://chess-beta-lac.vercel.app/og-image.jpg" />
+    <!-- ── JSON-LD Structured Data (Google Rich Results) ────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "CHESS",
+      "url": "https://chess-beta-lac.vercel.app/",
+      "description": "Play chess online for free. Real-time multiplayer with private rooms and quick matchmaking, AI opponent (easy/medium/hard), interactive learn mode with AI coaching, and local 2-player mode. No account needed.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Real-time online multiplayer chess",
+        "Private room codes",
+        "Quick matchmaking",
+        "AI chess engine (Easy / Medium / Hard)",
+        "Interactive learn mode with coaching",
+        "Local 2-player mode",
+        "No account or login required",
+        "PWA — installable on mobile"
+      ],
+      "screenshot": "https://chess-beta-lac.vercel.app/og-image.png",
+      "image": "https://chess-beta-lac.vercel.app/og-image.png",
+      "inLanguage": "en",
+      "isAccessibleForFree": true,
+      "author": {
+        "@type": "Organization",
+        "name": "CHESS"
+      }
+    }
+    </script>
+
+    <!-- ── FAQ Structured Data (boosts Google rich results) ─────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is CHESS free to play?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, CHESS is completely free. No account, no subscription, no ads. Just open the site and play."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I play chess with friends online?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Create a private room, share the 6-letter room code with your friend, and they can join instantly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does CHESS have an AI opponent?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can play against the computer at three difficulty levels: Easy, Medium, and Hard."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I learn chess on this app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The Learn mode pairs you with an AI coach that evaluates your moves, warns you about threats, and teaches you chess strategy."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does CHESS work on mobile?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. CHESS is a Progressive Web App (PWA). On Android you can install it from your browser to your home screen. It works on all modern browsers."
+          }
+        }
+      ]
+    }
+    </script>
+
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
 
-    <!-- ── Service Worker Registration ────────────────────────────── -->
+    <!-- ── Service Worker Registration ───────────────────────────────── -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
