@@ -155,11 +155,12 @@ class RoomManager {
     player.connected = true;
     player.socketId = socketId;
 
-    // Adjust the clocks based on elapsed time if game was actively playing
+    // NOTE: Do NOT adjust clocks here. The server-side setInterval in index.js
+    // continuously deducts elapsed time from the active player's clock every second.
+    // Adjusting clocks here would cause a double-deduction for the disconnect period.
+    // The clock was already running during disconnection, which is correct behaviour.
+    // Simply reset lastMoveTimestamp so the interval picks up from now.
     if (room.status === 'playing' && room.lastMoveTimestamp) {
-      const elapsed = Date.now() - room.lastMoveTimestamp;
-      const activeColor = room.game.turn() === 'w' ? 'white' : 'black';
-      room.clocks[activeColor] = Math.max(0, room.clocks[activeColor] - elapsed);
       room.lastMoveTimestamp = Date.now();
     }
 
@@ -207,7 +208,7 @@ class RoomManager {
           room.lastMoveTimestamp = Date.now();
         }
 
-        // Start 30-second reconnection window
+        // Start 60-second reconnection window (increased from 30s for network resilience)
         player.reconnectTimeout = setTimeout(() => {
           if (!player.connected && this.rooms.has(roomId)) {
             // Reconnection window expired, opponent wins
@@ -217,7 +218,7 @@ class RoomManager {
             this.checkWinnerStaysOn(room);
             callback(roomId, 'game_over', this.getRoomState(roomId));
           }
-        }, 30000); // 30 seconds
+        }, 60000); // 60 seconds
 
         callback(roomId, 'player_disconnected', { color, username: player.username });
         return;

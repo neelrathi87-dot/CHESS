@@ -2,32 +2,71 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
     <!-- Primary Meta Tags -->
-    <title>CHESS - Live Multiplayer & Minimax AI</title>
-    <meta name="title" content="CHESS - Live Multiplayer & Minimax AI" />
+    <title>CHESS - Live Multiplayer &amp; Minimax AI</title>
+    <meta name="title" content="CHESS - Live Multiplayer &amp; Minimax AI" />
     <meta name="description" content="Play real-time chess with friends or challenge a custom Minimax AI engine. Featuring server-side move verification, active game reconnection, live chat, and a premium dark-themed interface." />
     <meta name="keywords" content="chess, online chess, multiplayer chess, chess ai, minimax algorithm, play chess online, chess trainer, browser chess" />
     <meta name="author" content="CHESS" />
 
+    <!-- ── PWA ─────────────────────────────────────────────────────── -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme color (browser chrome / status bar) -->
+    <meta name="theme-color" content="#14b8a6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14b8a6" />
+
+    <!-- iOS / Safari PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CHESS" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- Prevent iOS from auto-detecting phone numbers / emails -->
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Splash screen color for iOS -->
+    <meta name="msapplication-TileColor" content="#020817" />
+    <meta name="msapplication-TileImage" content="/icon-192.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://chess-beta-lac.vercel.app/" />
-    <meta property="og:title" content="CHESS - Live Multiplayer & Minimax AI" />
+    <meta property="og:title" content="CHESS - Live Multiplayer &amp; Minimax AI" />
     <meta property="og:description" content="Play real-time chess with friends or challenge a custom Minimax AI engine. Featuring server-side move verification, active game reconnection, live chat, and a premium dark-themed interface." />
     <meta property="og:image" content="https://chess-beta-lac.vercel.app/og-image.jpg" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://chess-beta-lac.vercel.app/" />
-    <meta property="twitter:title" content="CHESS - Live Multiplayer & Minimax AI" />
+    <meta property="twitter:title" content="CHESS - Live Multiplayer &amp; Minimax AI" />
     <meta property="twitter:description" content="Play real-time chess with friends or challenge a custom Minimax AI engine. Featuring server-side move verification, active game reconnection, live chat, and a premium dark-themed interface." />
     <meta property="twitter:image" content="https://chess-beta-lac.vercel.app/og-image.jpg" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- ── Service Worker Registration ────────────────────────────── -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('/sw.js', { scope: '/' })
+            .then((reg) => {
+              console.log('[PWA] Service worker registered:', reg.scope);
+            })
+            .catch((err) => {
+              console.warn('[PWA] Service worker registration failed:', err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

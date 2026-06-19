@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap } from 'lucide-react';
+import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap, Gamepad2 } from 'lucide-react';
+import InstallGuide from './InstallGuide';
 
-export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount }) {
-  const [mode, setMode] = useState('learn'); // 'learn' | 'computer' | 'online' | 'multiplayer'
+export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount, onStartLocalGame, installPrompt, isAppInstalled, onInstallApp }) {
+  const [mode, setMode] = useState('learn'); // 'learn' | 'computer' | 'local' | 'online' | 'multiplayer'
   
   // Computer options
   const [aiDifficulty, setAiDifficulty] = useState('medium');
@@ -13,6 +14,11 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
   const [mpColor, setMpColor] = useState('random');
   const [timeLimit, setTimeLimit] = useState(10); // in minutes
   const [roomCodeInput, setRoomCodeInput] = useState('');
+
+  // Local 2-player options
+  const [localPlayer1, setLocalPlayer1] = useState('');
+  const [localPlayer2, setLocalPlayer2] = useState('');
+  const [localTimeLimit, setLocalTimeLimit] = useState(10);
 
   // Online matchmaking options
   const [onlineUsername, setOnlineUsername] = useState(() => localStorage.getItem('chess_username') || '');
@@ -29,6 +35,14 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
 
   const handleStartComputer = () => {
     onStartComputerGame(aiDifficulty, aiColor);
+  };
+
+  const handleStartLocal = () => {
+    onStartLocalGame({
+      player1: localPlayer1.trim() || 'Player 1',
+      player2: localPlayer2.trim() || 'Player 2',
+      timeLimit: localTimeLimit
+    });
   };
 
   const handleCreateRoom = (e) => {
@@ -64,8 +78,8 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
         <p className="text-slate-400 mt-2 text-lg">Learn, practice, and play chess with anyone in the world</p>
       </div>
 
-      {/* Mode Toggle Buttons - 4 tabs */}
-      <div className="flex bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-full max-w-lg mb-8">
+      {/* Mode Toggle Buttons - 5 tabs */}
+      <div className="flex flex-wrap gap-1.5 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-full max-w-lg mb-8">
         <button
           onClick={() => setMode('learn')}
           className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'learn' ? 'bg-gradient-to-r from-emerald-500 to-lime-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
@@ -79,10 +93,16 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
           <Monitor className="w-4 h-4" /> vs AI
         </button>
         <button
+          onClick={() => setMode('local')}
+          className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'local' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <Gamepad2 className="w-4 h-4" /> Local
+        </button>
+        <button
           onClick={() => setMode('online')}
           className={`flex-1 py-2.5 rounded-lg font-semibold flex items-center justify-center gap-1 transition-all text-xs ${mode === 'online' ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
         >
-          <Globe className="w-4 h-4" /> Play Online
+          <Globe className="w-4 h-4" /> Online
         </button>
         <button
           onClick={() => setMode('multiplayer')}
@@ -97,6 +117,7 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
         <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${
           mode === 'learn' ? 'from-emerald-500 via-lime-500 to-teal-500' :
           mode === 'computer' ? 'from-emerald-500 via-teal-500 to-indigo-500' :
+          mode === 'local' ? 'from-orange-500 via-amber-500 to-yellow-400' :
           mode === 'online' ? 'from-violet-500 via-fuchsia-500 to-pink-500' :
           'from-teal-500 via-indigo-500 to-violet-500'
         }`}></div>
@@ -192,6 +213,78 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
               Start AI Match
             </button>
           </div>
+
+        ) : mode === 'local' ? (
+          /* LOCAL 2-PLAYER PASS & PLAY PANEL */
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <Gamepad2 className="w-5 h-5 text-amber-400" /> Local 2-Player
+            </h2>
+            <p className="text-sm text-slate-400 -mt-3">
+              Pass and play on the same device. The board flips automatically after each move.
+            </p>
+
+            {/* Player Names */}
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400 block">⬜ Player 1 Name (White)</label>
+                <input
+                  type="text"
+                  value={localPlayer1}
+                  onChange={(e) => setLocalPlayer1(e.target.value)}
+                  placeholder="Player 1"
+                  maxLength={14}
+                  className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400 block">⬛ Player 2 Name (Black)</label>
+                <input
+                  type="text"
+                  value={localPlayer2}
+                  onChange={(e) => setLocalPlayer2(e.target.value)}
+                  placeholder="Player 2"
+                  maxLength={14}
+                  className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Time Control */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400 block">Time Control</label>
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { value: 1, label: '1m', sub: 'Bullet' },
+                  { value: 3, label: '3m', sub: 'Blitz' },
+                  { value: 5, label: '5m', sub: 'Blitz' },
+                  { value: 10, label: '10m', sub: 'Rapid' },
+                  { value: 30, label: '30m', sub: 'Classic' }
+                ].map((t) => (
+                  <button
+                    key={t.value}
+                    onClick={() => setLocalTimeLimit(t.value)}
+                    className={`py-2 rounded-lg border font-semibold transition-all text-center ${
+                      localTimeLimit === t.value
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md'
+                        : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="text-sm block">{t.label}</span>
+                    <span className="text-[9px] text-slate-500 block">{t.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleStartLocal}
+              className="w-full py-4 mt-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/10 hover:shadow-amber-400/20 flex items-center justify-center gap-2 transform hover:-translate-y-0.5 transition-all text-lg"
+            >
+              <Gamepad2 className="w-6 h-6" /> Start Local Game
+            </button>
+          </div>
+
         ) : mode === 'online' ? (
           /* PLAY ONLINE (RANDOM MATCHMAKING) PANEL */
           <div className="space-y-6">
@@ -387,6 +480,12 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
           </div>
         )}
       </div>
+
+      <InstallGuide
+        installPrompt={installPrompt}
+        isAppInstalled={isAppInstalled}
+        onInstallApp={onInstallApp}
+      />
     </div>
   );
 }

@@ -13,9 +13,12 @@ export default function GameArena({
   onRespondDraw,
   onSendMessage,
   onLeave,
-  playerColor, // 'white', 'black', or 'spectator'
+  playerColor, // 'white', 'black', 'both' (local), or 'spectator'
   gameState, // room state from socket or null if offline
   isOffline, // boolean
+  isLocalGame, // boolean - local 2-player pass & play mode
+  localPlayers, // { white, black } player names for local game
+  localBoardOrientation, // 'white' | 'black' - controlled by App for pass-and-play
   offlineDifficulty, // 'easy'|'medium'|'hard'
   offlineClocks, // { w, b } for offline mode
   onTickOfflineClock, // callback to decrement clock
@@ -23,7 +26,9 @@ export default function GameArena({
   onUndo, // callback to undo last move
   lastMove // last move object for evaluation
 }) {
-  const [boardOrientation, setBoardOrientation] = useState(playerColor === 'black' ? 'black' : 'white');
+  const [boardOrientation, setBoardOrientation] = useState(
+    isLocalGame ? localBoardOrientation : (playerColor === 'black' ? 'black' : 'white')
+  );
   const [copied, setCopied] = useState(false);
   const [showConfirmLeave, setShowConfirmLeave] = useState(false);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
@@ -35,16 +40,21 @@ export default function GameArena({
     setSelectedSquare(square);
   };
 
-  // Sync orientation with assigned color when color changes
+  // Sync orientation
   useEffect(() => {
-    setTimeout(() => {
-      if (playerColor === 'black') {
-        setBoardOrientation('black');
-      } else {
-        setBoardOrientation('white');
-      }
-    }, 0);
-  }, [playerColor]);
+    if (isLocalGame) {
+      // For local games, orientation is controlled externally (auto-flip on each move)
+      setBoardOrientation(localBoardOrientation);
+    } else {
+      setTimeout(() => {
+        if (playerColor === 'black') {
+          setBoardOrientation('black');
+        } else {
+          setBoardOrientation('white');
+        }
+      }, 0);
+    }
+  }, [playerColor, isLocalGame, localBoardOrientation]);
 
   // Extract status variables
   const isMultiplayer = !isOffline;
@@ -80,7 +90,14 @@ export default function GameArena({
   let topPlayer;
   let bottomPlayer;
 
-  if (isMultiplayer && gameState) {
+  if (isLocalGame && localPlayers) {
+    // Local 2-player: show both real names, current turn is always 'bottom'
+    const activeColor = game.turn() === 'w' ? 'white' : 'black';
+    const inactiveColor = activeColor === 'white' ? 'black' : 'white';
+    // Whoever's turn it is sees their own pieces at the bottom
+    topPlayer = { name: localPlayers[inactiveColor], color: inactiveColor, connected: true };
+    bottomPlayer = { name: localPlayers[activeColor], color: activeColor, connected: true };
+  } else if (isMultiplayer && gameState) {
     const whiteP = gameState.players.white;
     const blackP = gameState.players.black;
 
@@ -200,7 +217,9 @@ export default function GameArena({
     }
     if (status === 'checkmate') {
       const winner = isMultiplayer ? gameState.winner : (turn === 'w' ? 'Black' : 'White');
-      return `Checkmate! ${winner.toUpperCase()} wins!`;
+      if (playerColor === 'spectator' || isLocalGame) return `Checkmate! ${winner.toUpperCase()} wins!`;
+      if (winner === playerColor) return `Checkmate! You win!`;
+      return `Checkmate! You lose.`;
     }
     if (status === 'stalemate') {
       return 'Stalemate! Game drawn.';
@@ -211,11 +230,23 @@ export default function GameArena({
     }
     if (status === 'resigned') {
       const winner = gameState.winner;
-      return `Game Over. Opponent resigned. ${winner.toUpperCase()} wins!`;
+      if (playerColor === 'spectator' || isLocalGame) {
+        const loser = winner === 'white' ? 'Black' : 'White';
+        return `Game Over. ${loser} resigned. ${winner.toUpperCase()} wins!`;
+      }
+      if (winner === playerColor) {
+        return `Game Over. Opponent resigned. You win!`;
+      } else {
+        return `Game Over. You resigned. Opponent wins!`;
+      }
     }
     if (status === 'timeout') {
-      const winner = isMultiplayer ? gameState.winner : (offlineClocks.w <= 0 ? 'Black' : 'White');
-      return `Timeout! ${winner.toUpperCase()} wins on time!`;
+      const winner = isMultiplayer
+        ? gameState.winner
+        : (offlineClocks?.w <= 0 ? 'Black' : 'White');
+      if (playerColor === 'spectator' || isLocalGame) return `Timeout! ${winner.toUpperCase()} wins on time!`;
+      if (winner === playerColor) return `Timeout! You win on time!`;
+      return `Timeout! You lose on time.`;
     }
 
     // Active playing states
@@ -315,7 +346,7 @@ export default function GameArena({
           {/* Board Rendering - flex-1 to fill available space */}
           <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0">
             <div className="w-full max-w-[min(100%,_60vh)] mx-auto" style={{ aspectRatio: '1/1' }}>
-              <GameBoard
+                          <GameBoard
                 game={game}
                 onMove={onMove}
                 onPieceSelect={handlePieceSelect}
@@ -334,8 +365,8 @@ export default function GameArena({
                 {bottomPlayer.name.slice(0, 2)}
               </div>
               <div>
-                <span className="text-xs font-semibold text-slate-200 block leading-tight">{bottomPlayer.name} (You)</span>
-                <span className="text-[9px] text-slate-500 capitalize">{bottomPlayer.color}</span>
+                <span className="text-xs font-semibold text-slate-200 block leading-tight">{bottomPlayer.name}{!isLocalGame && ' (You)'}</span>
+                <span className="text-[9px] text-slate-500 capitalize">{bottomPlayer.color}{isLocalGame ? ' · Your turn' : ''}</span>
               </div>
             </div>
             {/* Player Clock */}

@@ -12,7 +12,14 @@ const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  // Keep connections alive through aggressive proxy timeouts (Render, etc.)
+  // Ping every 10s, timeout if no pong within 5s → detects dead sockets in ~15s
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  // Allow both transports; polling first for reliable initial handshake
+  transports: ['polling', 'websocket'],
+  upgradeTimeout: 10000
 });
 
 // Basic check endpoint
@@ -20,9 +27,35 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', activeRooms: roomManager.rooms.size });
 });
 
+// Debug endpoint for sockets
+app.get('/sockets', async (req, res) => {
+  const sockets = await io.fetchSockets();
+  res.json({
+    count: io.engine.clientsCount,
+    sockets: sockets.map(s => s.id)
+  });
+});
+
+const connectedPlayers = new Map(); // socket.id -> playerId
+
+// Helper to broadcast accurate unique user count
+const broadcastUniquePlayerCount = () => {
+  const uniqueIds = new Set(connectedPlayers.values());
+  io.emit('onlinePlayersCount', uniqueIds.size);
+};
+
 // Socket connection
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+  
+  // Track unique players based on their device playerId
+  const playerId = socket.handshake.query.playerId;
+  if (playerId) {
+    connectedPlayers.set(socket.id, playerId);
+  }
+
+  // Broadcast updated total online players count
+  broadcastUniquePlayerCount();
 
   // Helper to process matchmaking
   const handleMatchmakingResults = (results) => {
@@ -60,8 +93,7 @@ io.on('connection', (socket) => {
     });
   };
   
-  // Broadcast updated total online players count
-  io.emit('onlinePlayersCount', io.engine.clientsCount);
+  // (Count broadcast is now handled above during connection)
 
   // 1. Create Room
   socket.on('createRoom', ({ hostId, hostColor, username, timeLimit }) => {
@@ -256,14 +288,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 10. Disconnect
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
+  // 10. App-level heartbeat — client pings every 20s to survive aggressive proxy idle timeouts
+  socket.on('ping', () => {
+    socket.emit('pong');
+  });
+
+  // 11. Disconnect
+  socket.on('disconnect', (reason) => {
+    console.log(`User disconnected: ${socket.id} — reason: ${reason}`);
     
-    // Broadcast updated total online players count (delayed slightly so the disconnect registers)
+    // Remove from tracking and broadcast updated unique count
+    connectedPlayers.delete(socket.id);
     setTimeout(() => {
-      io.emit('onlinePlayersCount', io.engine.clientsCount);
-    }, 0);
+      broadcastUniquePlayerCount();
+    }, 100);
     
     // Remove from matchmaking queue
     roomManager.removeFromQueueBySocket(socket.id);

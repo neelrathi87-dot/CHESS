@@ -1,5 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Chessboard } from 'react-chessboard';
+
+// Piece image URLs (Wikipedia chess piece SVGs — same set react-chessboard uses by default)
+const PIECE_SVGS = {
+  wK: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
+  wQ: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
+  wR: 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
+  wB: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
+  wN: 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
+  wP: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
+  bK: 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
+  bQ: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
+  bR: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
+  bB: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
+  bN: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg',
+  bP: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
+};
 
 export default function GameBoard({
   game,
@@ -14,8 +31,16 @@ export default function GameBoard({
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const lastMoveFenRef = useRef(null);
 
+  // Ghost piece state: shown at source square during drag via a portal
+  const [ghostPiece, setGhostPiece] = useState(null); // { piece, top, left, size }
+  const boardContainerRef = useRef(null);
+
   const turn = game.turn(); // 'w' or 'b'
+
+  // In local 2-player mode playerColor is 'both' — either player can move on their turn
+  const isLocalBoth = playerColor === 'both';
   const isMyTurn = interactive && (
+    isLocalBoth ||
     (playerColor === 'white' && turn === 'w') ||
     (playerColor === 'black' && turn === 'b')
   );
@@ -79,6 +104,8 @@ export default function GameBoard({
     // Check if clicked square has player's piece
     const piece = game.get(square);
     const isOwnPiece = piece && (
+      // In local 2-player mode, allow whichever side is on turn
+      (isLocalBoth && piece.color === turn) ||
       (piece.color === 'w' && playerColor === 'white') ||
       (piece.color === 'b' && playerColor === 'black')
     );
@@ -143,7 +170,10 @@ export default function GameBoard({
     });
     const validMove = moves.find((m) => m.to === targetSquare);
 
+    // In local 2-player mode, only allow the current turn's pieces to be dragged
     if (!validMove) return false;
+    const sourcePiece = game.get(sourceSquare);
+    if (!isLocalBoth && sourcePiece && sourcePiece.color !== turn) return false;
     if (lastMoveFenRef.current === game.fen()) return false;
 
     if (checkPromotion(sourceSquare, targetSquare)) {
@@ -159,6 +189,20 @@ export default function GameBoard({
     setSelectedSquare(null);
     setOptionSquares({});
     return true;
+  };
+
+  // --- Ghost piece: shown at source square during drag ---
+  const handlePieceDragBegin = (piece, sourceSquare) => {
+    if (!boardContainerRef.current) return;
+    const squareEl = boardContainerRef.current.querySelector(`[data-square="${sourceSquare}"]`);
+    if (squareEl) {
+      const rect = squareEl.getBoundingClientRect();
+      setGhostPiece({ piece, top: rect.top, left: rect.left, size: rect.width });
+    }
+  };
+
+  const handlePieceDragEnd = () => {
+    setGhostPiece(null);
   };
 
   const handlePromotionSelect = (pieceCode) => {
@@ -217,11 +261,13 @@ export default function GameBoard({
   };
 
   return (
-    <div className="relative w-full max-w-[560px] aspect-square select-none mx-auto">
+    <div className="relative w-full max-w-[560px] aspect-square select-none mx-auto" ref={boardContainerRef}>
       <Chessboard
         position={game.fen()}
         onPieceDrop={onPieceDrop}
         onSquareClick={onSquareClick}
+        onPieceDragBegin={handlePieceDragBegin}
+        onPieceDragEnd={handlePieceDragEnd}
         boardOrientation={boardOrientation}
         customSquareStyles={getCustomSquareStyles()}
         customBoardStyle={{
@@ -231,10 +277,29 @@ export default function GameBoard({
         }}
         customDarkSquareStyle={{ backgroundColor: '#2d3748' }} // sleek slate-800
         customLightSquareStyle={{ backgroundColor: '#718096' }} // soft steel slate-500
-        customPieces={{
-          // Use standard pieces which look excellent
-        }}
       />
+
+      {/* Ghost piece portal — renders at source square position on top of everything,
+          bypassing react-dnd's opacity:0 on the piece container */}
+      {ghostPiece && PIECE_SVGS[ghostPiece.piece] && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: ghostPiece.top,
+            left: ghostPiece.left,
+            width: ghostPiece.size,
+            height: ghostPiece.size,
+            pointerEvents: 'none',
+            zIndex: 9998,
+            opacity: 0.45,
+            backgroundImage: `url(${PIECE_SVGS[ghostPiece.piece]})`,
+            backgroundSize: '80%',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+          }}
+        />,
+        document.body
+      )}
 
       {/* Pawn Promotion Selection Modal Overlay */}
       {pendingPromotion && (

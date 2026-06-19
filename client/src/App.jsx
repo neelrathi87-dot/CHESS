@@ -13,11 +13,20 @@ const getSocket = () => {
     // Use env variable if set (for production), otherwise auto-detect from browser
     const url = import.meta.env.VITE_SERVER_URL || `http://${window.location.hostname}:5000`;
     socketInstance = io(url, {
+      query: { playerId: getOrCreatePlayerId() },
       autoConnect: false,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 3000,
+      // Polling first → then upgrade to WebSocket.
+      // This is more reliable behind HTTP proxies (Render, Vercel, etc.) that
+      // may not support direct WebSocket upgrades on first connect.
+      transports: ['polling', 'websocket'],
+      // Reconnect aggressively so we recover within the 60s server window
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000,      // start retrying after 1s
+      reconnectionDelayMax: 5000,   // cap at 5s between retries
       timeout: 60000, // 60s timeout for Render cold starts
-      transports: ['websocket', 'polling'] // try websocket first, fallback to polling
+      // Match server-side ping settings
+      pingInterval: 10000,
+      pingTimeout: 5000,
     });
   }
   return socketInstance;
@@ -57,6 +66,33 @@ export default function App() {
   const [mismatchProposal, setMismatchProposal] = useState(null);
   const [waitingOnActiveMatch, setWaitingOnActiveMatch] = useState(null);
 
+  // Local 2-player game state
+  const [isLocalGame, setIsLocalGame] = useState(false);
+  const [localPlayers, setLocalPlayers] = useState({ white: 'Player 1', black: 'Player 2' });
+  const [localBoardOrientation, setLocalBoardOrientation] = useState('white');
+
+  // PWA install prompt
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  // Capture browser's install prompt event
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => {
+      setIsAppInstalled(true);
+      setInstallPrompt(null);
+    });
+    // Check if already running as installed PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+    }
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   const playerId = getOrCreatePlayerId();
   const socket = getSocket();
 
@@ -87,8 +123,8 @@ export default function App() {
       setConnecting(false);
     });
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from socket server');
+    socket.on('disconnect', (reason) => {
+      console.log('Disconnected from socket server, reason:', reason);
     });
 
     socket.on('connect_error', (err) => {
@@ -103,6 +139,14 @@ export default function App() {
     socket.io.on('reconnect', () => {
       setConnecting(false);
     });
+
+    // App-level heartbeat: emit a ping every 20s to keep the connection alive
+    // through aggressive proxy idle timeouts that would silently drop the socket.
+    const heartbeatInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit('ping');
+      }
+    }, 20000);
 
     socket.on('onlinePlayersCount', (count) => {
       setOnlinePlayersCount(count);
@@ -158,7 +202,7 @@ export default function App() {
     });
 
     socket.on('playerDisconnected', ({ username }) => {
-      showToast(`${username || 'Opponent'} disconnected! 30s to reconnect...`, 'warning');
+      showToast(`${username || 'Opponent'} disconnected! 60s to reconnect...`, 'warning');
     });
 
     socket.on('errorMsg', ({ message }) => {
@@ -212,6 +256,7 @@ export default function App() {
     });
 
     return () => {
+      clearInterval(heartbeatInterval);
       socket.off('connect');
       socket.off('disconnect');
       socket.off('connect_error');
@@ -298,7 +343,22 @@ export default function App() {
 
   // Handle client move request
   const handleMove = (moveData) => {
-    if (isOffline) {
+    if (isLocalGame) {
+      // Local 2-player: apply move then flip board for next player
+      try {
+        const result = game.move(moveData);
+        if (result) {
+          const newGame = new Chess();
+          newGame.loadPgn(game.pgn());
+          setGame(newGame);
+          setLastMove(result);
+          // Flip board so the next player sees from their side
+          setLocalBoardOrientation(newGame.turn() === 'w' ? 'white' : 'black');
+        }
+      } catch {
+        showToast('Invalid move', 'error');
+      }
+    } else if (isOffline) {
       try {
         // Apply move to existing game instance to preserve history
         const result = game.move(moveData);
@@ -388,6 +448,7 @@ export default function App() {
     setOfflineClocks({ w: 600000, b: 600000 }); // Reset to 10 min
     setGame(new Chess());
     setIsOffline(true);
+    setIsLocalGame(false);
     setScreen('arena');
     setAiIsThinking(false);
 
@@ -395,6 +456,23 @@ export default function App() {
     sessionStorage.removeItem('chess_room_id');
     setIsLearnMode(false);
     setLastMove(null);
+  };
+
+  // Start Local 2-Player Pass & Play Game
+  const handleStartLocalGame = ({ player1, player2, timeLimit }) => {
+    const timeLimitMs = timeLimit * 60 * 1000;
+    setLocalPlayers({ white: player1, black: player2 });
+    setOfflineClocks({ w: timeLimitMs, b: timeLimitMs });
+    setGame(new Chess());
+    setIsOffline(true);
+    setIsLocalGame(true);
+    setPlayerColor('both'); // Special value: both sides are human
+    setLocalBoardOrientation('white'); // White starts
+    setScreen('arena');
+    setAiIsThinking(false);
+    setIsLearnMode(false);
+    setLastMove(null);
+    sessionStorage.removeItem('chess_room_id');
   };
 
   // Start Learn Mode — Easy AI with assistant
@@ -463,7 +541,12 @@ export default function App() {
 
   // Resign active game
   const handleResign = () => {
-    if (isOffline) {
+    if (isLocalGame) {
+      // In local mode, current player resigns
+      const losingColor = game.turn() === 'w' ? 'w' : 'b';
+      setOfflineClocks((prev) => ({ ...prev, [losingColor]: 0 }));
+      showToast(`${losingColor === 'w' ? localPlayers.white : localPlayers.black} resigned. Game Over.`, 'info');
+    } else if (isOffline) {
       // Trigger local timeout for player
       const lostColor = playerColor === 'white' ? 'w' : 'b';
       setOfflineClocks((prev) => ({
@@ -481,7 +564,12 @@ export default function App() {
 
   // Offer Draw
   const handleOfferDraw = () => {
-    if (isOffline) {
+    if (isLocalGame) {
+      // In local 2-player, both players agree on the spot — just show the draw confirm in arena
+      // We mark it as a draw by zeroing both clocks equally
+      showToast('Both players agreed to a draw!', 'success');
+      setOfflineClocks({ w: 0, b: 0 });
+    } else if (isOffline) {
       // AI evaluates: if material is equal, it might accept, else reject
       const diff = Math.abs(game.history().length);
       if (diff > 30) {
@@ -531,6 +619,7 @@ export default function App() {
     sessionStorage.removeItem('chess_room_id');
     setReconnectCode(null);
     setGameState(null);
+    setIsLocalGame(false);
     setScreen('lobby');
   }
 
@@ -653,11 +742,23 @@ export default function App() {
               onCreateRoom={handleCreateRoom}
               onJoinRoom={handleJoinRoom}
               onStartComputerGame={handleStartComputerGame}
+              onStartLocalGame={handleStartLocalGame}
               onFindMatch={handleFindMatch}
               onCancelSearch={handleCancelSearch}
               isSearching={isSearching}
               onStartLearnMode={handleStartLearnMode}
               onlinePlayersCount={onlinePlayersCount}
+              installPrompt={installPrompt}
+              isAppInstalled={isAppInstalled}
+              onInstallApp={async () => {
+                if (!installPrompt) return;
+                installPrompt.prompt();
+                const { outcome } = await installPrompt.userChoice;
+                if (outcome === 'accepted') {
+                  setInstallPrompt(null);
+                  setIsAppInstalled(true);
+                }
+              }}
             />
           </div>
         ) : (
@@ -672,6 +773,10 @@ export default function App() {
             playerColor={playerColor}
             gameState={gameState}
             isOffline={isOffline}
+            isOffline={isOffline}
+            isLocalGame={isLocalGame}
+            localPlayers={localPlayers}
+            localBoardOrientation={localBoardOrientation}
             offlineDifficulty={offlineDifficulty}
             offlineClocks={offlineClocks}
             onTickOfflineClock={handleTickOfflineClock}
@@ -682,9 +787,32 @@ export default function App() {
         )}
       </main>
 
-      {/* Modern Premium Footer */}
-      <footer className="text-center py-5 border-t border-slate-900/60 bg-slate-950/80 text-[10px] text-slate-600 font-mono">
-        &copy; {new Date().getFullYear()} CHESS &bull; Rules validated server-side &bull; Powered by React, Vite & Socket.io
+      {/* Footer — Paper Archive style: copyright left, links right */}
+      <footer className="border-t border-slate-900/60 bg-slate-950">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between flex-wrap gap-3">
+          {/* Left: copyright */}
+          <p className="text-[11px] text-slate-600 font-sans">
+            &copy; {new Date().getFullYear()} <span className="text-slate-500 font-semibold">CHESS</span>
+            &nbsp;&middot;&nbsp;MIT License&nbsp;&middot;&nbsp;Independent project
+          </p>
+          {/* Right: links */}
+          <nav className="flex items-center gap-5">
+            {[
+              { label: 'Terms',        href: '/terms.html' },
+              { label: 'Privacy',      href: '/privacy.html' },
+              { label: 'Honor Code',   href: '/honor-code.html' },
+              { label: 'Legal & DMCA', href: '/legal.html' },
+            ].map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors duration-200 font-sans"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        </div>
       </footer>
     </div>
   );

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Honor Code – CHESS</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #020817; color: #cbd5e1; font-family: 'Inter', sans-serif; min-height: 100vh; }
+    .header { border-bottom: 1px solid #1e293b; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; background: #020817cc; backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; }
+    .logo { font-size: 18px; font-weight: 700; color: #14b8a6; letter-spacing: 2px; text-decoration: none; }
+    .back { font-size: 13px; color: #64748b; text-decoration: none; transition: color .2s; }
+    .back:hover { color: #94a3b8; }
+    .container { max-width: 720px; margin: 0 auto; padding: 56px 24px 80px; }
+    .badge { display: inline-block; background: #f59e0b20; border: 1px solid #f59e0b30; color: #fbbf24; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 100px; margin-bottom: 20px; }
+    h1 { font-size: 36px; font-weight: 700; color: #f1f5f9; line-height: 1.2; margin-bottom: 8px; }
+    .meta { font-size: 13px; color: #475569; margin-bottom: 48px; }
+    h2 { font-size: 18px; font-weight: 600; color: #e2e8f0; margin: 40px 0 12px; }
+    p { font-size: 15px; line-height: 1.75; color: #94a3b8; margin-bottom: 16px; }
+    ul { padding-left: 0; margin-bottom: 16px; list-style: none; }
+    li { font-size: 15px; line-height: 1.75; color: #94a3b8; margin-bottom: 12px; display: flex; gap: 12px; }
+    li .icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; margin-top: 2px; }
+    .pledge { background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid #334155; border-radius: 16px; padding: 32px; margin: 32px 0; text-align: center; }
+    .pledge .title { font-size: 22px; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; }
+    .pledge p { color: #94a3b8; font-size: 15px; max-width: 480px; margin: 0 auto; }
+    .rule-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 20px 24px; margin-bottom: 12px; display: flex; gap: 16px; align-items: flex-start; }
+    .rule-card .num { font-size: 28px; font-weight: 800; color: #1e293b; flex-shrink: 0; line-height: 1; }
+    .rule-card h3 { font-size: 15px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+    .rule-card p { font-size: 14px; color: #64748b; margin: 0; }
+    .divider { border: none; border-top: 1px solid #1e293b; margin: 40px 0; }
+    .footer-links { display: flex; gap: 24px; justify-content: center; padding: 24px 0; border-top: 1px solid #1e293b; margin-top: 64px; flex-wrap: wrap; }
+    .footer-links a { font-size: 12px; color: #475569; text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: #94a3b8; }
+    .footer-links a.active { color: #14b8a6; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a class="logo" href="/">♟ CHESS</a>
+    <a class="back" href="/">← Back to Game</a>
+  </header>
+  <div class="container">
+    <div class="badge">Community</div>
+    <h1>Honor Code</h1>
+    <p class="meta">Chess is a game of skill, patience, and respect. Play it that way.</p>
+
+    <div class="pledge">
+      <div class="title">♟ The CHESS Pledge</div>
+      <p>I will play every game with integrity — no engines, no abuse, no dishonesty. I respect my opponent, whether I win or lose.</p>
+    </div>
+
+    <h2>The Rules of Fair Play</h2>
+
+    <div class="rule-card">
+      <div class="num">01</div>
+      <div>
+        <h3>No Engine Assistance</h3>
+        <p>Using chess engines, bots, or any computer assistance to determine your moves in an online game against a human opponent is strictly forbidden. Play your own game.</p>
+      </div>
+    </div>
+
+    <div class="rule-card">
+      <div class="num">02</div>
+      <div>
+        <h3>Respect Your Opponent</h3>
+        <p>Keep in-game chat respectful. Trash talk, slurs, harassment, or deliberate taunting of any kind will not be tolerated. Chess is a game between two people — treat your opponent as you'd want to be treated.</p>
+      </div>
+    </div>
+
+    <div class="rule-card">
+      <div class="num">03</div>
+      <div>
+        <h3>Finish Your Games</h3>
+        <p>If you start a game, finish it — even if you're losing. Deliberately disconnecting to avoid a loss is unsportsmanlike. If you need to leave, use the resign button.</p>
+      </div>
+    </div>
+
+    <div class="rule-card">
+      <div class="num">04</div>
+      <div>
+        <h3>Don't Exploit Bugs</h3>
+        <p>If you discover a bug or exploit in the game, please report it rather than using it to gain an unfair advantage. The integrity of the game depends on everyone playing by the same rules.</p>
+      </div>
+    </div>
+
+    <div class="rule-card">
+      <div class="num">05</div>
+      <div>
+        <h3>Accept Results Gracefully</h3>
+        <p>Win with humility, lose with grace. A draw offer should be genuine, not a harassment tactic. Don't spam draw offers or resignation prompts to distract your opponent.</p>
+      </div>
+    </div>
+
+    <div class="rule-card">
+      <div class="num">06</div>
+      <div>
+        <h3>No Account Manipulation</h3>
+        <p>Do not create fake accounts to manipulate game results or circumvent any restrictions. Play honestly under a single identity.</p>
+      </div>
+    </div>
+
+    <h2>The Spirit of Chess</h2>
+    <p>Chess has been played for over 1,500 years as a game of intellect and honor. Every move you make is a reflection of your character, not just your skill. We built this platform to celebrate the beauty of the game — help us keep it that way.</p>
+    <p>Violations of this Honor Code may result in access restrictions. We rely on the community to self-police and report bad behavior.</p>
+
+    <hr class="divider" />
+
+    <div class="footer-links">
+      <a href="/terms.html">Terms</a>
+      <a href="/privacy.html">Privacy</a>
+      <a class="active" href="/honor-code.html">Honor Code</a>
+      <a href="/legal.html">Legal & DMCA</a>
+    </div>
+  </div>
+</body>
+</html>
