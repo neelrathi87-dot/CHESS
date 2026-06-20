@@ -143,7 +143,7 @@ function getGuideKey({ isIos, isMac, isAndroid, isWindows, isChrome, isEdge, isS
 }
 
 export default function InstallGuide({ installPrompt, onInstallApp, isAppInstalled }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const platform = detectPlatform();
   const guideKey = getGuideKey(platform);
   const guide = GUIDES[guideKey];
