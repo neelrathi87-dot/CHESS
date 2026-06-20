@@ -352,8 +352,6 @@ export default function App() {
           newGame.loadPgn(game.pgn());
           setGame(newGame);
           setLastMove(result);
-          // Flip board so the next player sees from their side
-          setLocalBoardOrientation(newGame.turn() === 'w' ? 'white' : 'black');
         }
       } catch {
         showToast('Invalid move', 'error');
