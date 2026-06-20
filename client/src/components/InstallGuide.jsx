@@ -161,10 +161,10 @@ export default function InstallGuide({ installPrompt, onInstallApp, isAppInstall
         <div className="space-y-2">
           <button
             onClick={onInstallApp}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl bg-gradient-to-r from-teal-600/20 to-emerald-600/20 border border-teal-500/30 hover:border-teal-400/60 text-teal-300 hover:text-white font-semibold text-sm transition-all group shadow-md"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 border border-teal-400 shadow-[0_0_20px_rgba(45,212,191,0.6)] hover:shadow-[0_0_30px_rgba(45,212,191,0.9)] text-slate-950 font-bold text-sm transition-all group animate-pulse hover:animate-none"
           >
             <Download className="w-4 h-4 group-hover:animate-bounce" />
-            Install App — Play Anytime, No Browser Needed
+            Install App — Play Anytime
           </button>
           <button
             onClick={() => setOpen((v) => !v)}
@@ -182,9 +182,9 @@ export default function InstallGuide({ installPrompt, onInstallApp, isAppInstall
         /* No native prompt — show toggle button to reveal manual instructions */
         <button
           onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-teal-500/30 text-slate-500 hover:text-teal-300 text-xs font-semibold transition-all"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-xs font-bold transition-all"
         >
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-3.5 h-3.5 animate-bounce" />
           Install as App {guide.icon}
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>

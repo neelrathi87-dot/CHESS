@@ -813,8 +813,8 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Floating Install Guide in Bottom Right Corner */}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end">
+      {/* Floating Install Guide in Top Right Corner */}
+      <div className="fixed top-4 right-4 z-[100] flex flex-col items-end">
         <InstallGuide
           installPrompt={installPrompt}
           isAppInstalled={isAppInstalled}
