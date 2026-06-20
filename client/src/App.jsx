@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import GameArena from './components/GameArena';
+import InstallGuide from './components/InstallGuide';
 
 import { AlertCircle, RefreshCw, Globe, Search } from 'lucide-react';
 
@@ -92,6 +93,16 @@ export default function App() {
     }
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsAppInstalled(true);
+    }
+  };
 
   const playerId = getOrCreatePlayerId();
   const socket = getSocket();
@@ -746,17 +757,6 @@ export default function App() {
               isSearching={isSearching}
               onStartLearnMode={handleStartLearnMode}
               onlinePlayersCount={onlinePlayersCount}
-              installPrompt={installPrompt}
-              isAppInstalled={isAppInstalled}
-              onInstallApp={async () => {
-                if (!installPrompt) return;
-                installPrompt.prompt();
-                const { outcome } = await installPrompt.userChoice;
-                if (outcome === 'accepted') {
-                  setInstallPrompt(null);
-                  setIsAppInstalled(true);
-                }
-              }}
             />
           </div>
         ) : (
@@ -812,6 +812,15 @@ export default function App() {
           </nav>
         </div>
       </footer>
+
+      {/* Floating Install Guide in Bottom Right Corner */}
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end">
+        <InstallGuide
+          installPrompt={installPrompt}
+          isAppInstalled={isAppInstalled}
+          onInstallApp={handleInstallApp}
+        />
+      </div>
     </div>
   );
 }

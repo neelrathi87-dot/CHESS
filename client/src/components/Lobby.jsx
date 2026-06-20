@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap, Gamepad2 } from 'lucide-react';
-import InstallGuide from './InstallGuide';
 
-export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount, onStartLocalGame, installPrompt, isAppInstalled, onInstallApp }) {
+export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount, onStartLocalGame }) {
   const [mode, setMode] = useState(() => localStorage.getItem('chess_lobby_mode') || 'local');
   
   // Computer options
@@ -484,12 +483,6 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
           </div>
         )}
       </div>
-
-      <InstallGuide
-        installPrompt={installPrompt}
-        isAppInstalled={isAppInstalled}
-        onInstallApp={onInstallApp}
-      />
     </div>
   );
 }

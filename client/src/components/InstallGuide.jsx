@@ -143,7 +143,7 @@ function getGuideKey({ isIos, isMac, isAndroid, isWindows, isChrome, isEdge, isS
 }
 
 export default function InstallGuide({ installPrompt, onInstallApp, isAppInstalled }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const platform = detectPlatform();
   const guideKey = getGuideKey(platform);
   const guide = GUIDES[guideKey];
@@ -155,7 +155,7 @@ export default function InstallGuide({ installPrompt, onInstallApp, isAppInstall
   if (isStandalone) return null;
 
   return (
-    <div className="w-full max-w-md mt-3">
+    <div className="w-72 md:w-80 relative">
       {/* ── If native install prompt available, show install button + toggle ── */}
       {installPrompt && !isAppInstalled ? (
         <div className="space-y-2">
