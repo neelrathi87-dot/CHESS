@@ -3,7 +3,7 @@ import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap, Gam
 import InstallGuide from './InstallGuide';
 
 export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount, onStartLocalGame, installPrompt, isAppInstalled, onInstallApp }) {
-  const [mode, setMode] = useState('learn'); // 'learn' | 'computer' | 'local' | 'online' | 'multiplayer'
+  const [mode, setMode] = useState(() => localStorage.getItem('chess_lobby_mode') || 'local');
   
   // Computer options
   const [aiDifficulty, setAiDifficulty] = useState('medium');
@@ -24,7 +24,11 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
   const [onlineUsername, setOnlineUsername] = useState(() => localStorage.getItem('chess_username') || '');
   const [onlineTimeLimit, setOnlineTimeLimit] = useState(10);
 
-  // Auto-save username to localStorage on type
+  // Auto-save username and mode to localStorage on type/change
+  useEffect(() => {
+    localStorage.setItem('chess_lobby_mode', mode);
+  }, [mode]);
+
   useEffect(() => {
     if (username) localStorage.setItem('chess_username', username);
   }, [username]);
