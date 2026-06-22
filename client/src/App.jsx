@@ -6,7 +6,7 @@ import GameArena from './components/GameArena';
 import InstallGuide from './components/InstallGuide';
 import SettingsModal from './components/SettingsModal';
 
-import { AlertCircle, RefreshCw, Globe, Search } from 'lucide-react';
+import { AlertCircle, RefreshCw, Globe, Search, Palette } from 'lucide-react';
 
 // Socket connection singleton
 let socketInstance = null;
@@ -806,12 +806,6 @@ export default function App() {
           </p>
           {/* Right: links */}
           <nav className="flex items-center gap-5">
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors duration-200 font-sans"
-            >
-              Settings
-            </button>
             {[
               { label: 'Terms',        href: '/terms.html' },
               { label: 'Privacy',      href: '/privacy.html' },
@@ -838,6 +832,15 @@ export default function App() {
           onInstallApp={handleInstallApp}
         />
       </div>
+
+      {/* Floating Settings Button in Bottom Left Corner */}
+      <button
+        onClick={() => setIsSettingsOpen(true)}
+        className="fixed bottom-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
+      >
+        <Palette className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+        <span className="hidden md:inline">Themes & Settings</span>
+      </button>
 
       <SettingsModal 
         isOpen={isSettingsOpen} 
