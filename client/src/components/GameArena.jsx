@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, RefreshCw, LogOut, Copy, Check, MessageCircle, AlertTriangle, Trophy, Handshake, Flag, Clock, Crown, X } from 'lucide-react';
+import { playSound } from '../utils/sounds';
 import GameBoard from './GameBoard';
 import MoveHistory from './MoveHistory';
 import ChatBox from './ChatBox';
@@ -27,7 +28,8 @@ export default function GameArena({
   onUndo, // callback to undo last move
   lastMove, // last move object for evaluation
   boardTheme, // string theme id
-  onStartAnalysis // callback to enter analysis mode
+  onStartAnalysis, // callback to enter analysis mode
+  onRequestRematch
 }) {
   const [boardOrientation, setBoardOrientation] = useState(
     isLocalGame ? localBoardOrientation : (playerColor === 'black' ? 'black' : 'white')
@@ -38,25 +40,6 @@ export default function GameArena({
   const [showDrawConfirm, setShowDrawConfirm] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const prevStatusRef = useRef('playing');
-
-  // 🔊 Audio Manager
-  const audioContextRef = useRef(null);
-  useEffect(() => {
-    audioContextRef.current = {
-      move: new Audio('/sounds/move.mp3'),
-      capture: new Audio('/sounds/capture.mp3'),
-      check: new Audio('/sounds/check.mp3'),
-      gameEnd: new Audio('/sounds/game-end.mp3')
-    };
-  }, []);
-
-  const playSound = (type) => {
-    if (audioContextRef.current && audioContextRef.current[type]) {
-      const audio = audioContextRef.current[type];
-      audio.currentTime = 0;
-      audio.play().catch(() => {}); // catch autoplay blocks
-    }
-  };
 
   // 📊 Evaluation Engine Worker
   const [evaluation, setEvaluation] = useState('0.0');
@@ -107,17 +90,28 @@ export default function GameArena({
   }, [game.fen(), isLearnMode]);
 
   // Play sound on move
+  const previousFenSoundRef = useRef(game.fen());
+  
   useEffect(() => {
-    if (!lastMove) return;
-    if (game.inCheck()) {
-      playSound('check');
-    } else if (lastMove.captured || lastMove.san?.includes('x')) {
-      playSound('capture');
-    } else {
-      playSound('move');
+    const currentFen = game.fen();
+    if (previousFenSoundRef.current !== currentFen) {
+      previousFenSoundRef.current = currentFen;
+      
+      const history = game.history({ verbose: true });
+      const moveObj = history.length > 0 ? history[history.length - 1] : null;
+      
+      if (moveObj) {
+        if (game.inCheck()) {
+          playSound('check');
+        } else if (moveObj.captured || moveObj.san?.includes('x')) {
+          playSound('capture');
+        } else {
+          playSound('move');
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastMove]);
+  }, [game.fen()]);
 
   const handlePieceSelect = (square) => {
     setSelectedSquare(square);
@@ -431,7 +425,7 @@ export default function GameArena({
 
           {/* Board Rendering - flex-1 to fill available space */}
           <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0">
-            <div className="flex w-full max-w-[min(100%,_60vh)] mx-auto gap-2" style={{ aspectRatio: '1/1' }}>
+            <div className="flex w-full max-w-[min(100vw,_80vh)] lg:max-w-[min(100%,_65vh)] mx-auto gap-2">
               {/* Eval Bar (Only if not learn mode, since learn mode is guided) */}
               {!isLearnMode && (
                 <EvalBar evaluation={evaluation} boardOrientation={boardOrientation} />
@@ -713,28 +707,41 @@ export default function GameArena({
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowGameOverModal(false);
-                  onStartAnalysis(game.pgn());
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-1.5"
-              >
-                <MessageCircle className="w-4 h-4" /> Analyze Game
-              </button>
-              <button
-                onClick={() => setShowGameOverModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700 transition-all flex items-center justify-center gap-1.5"
-              >
-                Board & Chat
-              </button>
-              <button
-                onClick={onLeave}
-                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm border border-rose-600 transition-all flex items-center justify-center gap-1.5"
-              >
-                <LogOut className="w-4 h-4" /> Leave
-              </button>
+            <div className="flex flex-col gap-2">
+              {isMultiplayer && (
+                <button
+                  onClick={() => {
+                    setShowGameOverModal(false);
+                    onRequestRematch();
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm transition-all flex items-center justify-center gap-1.5 shadow"
+                >
+                  <RefreshCw className="w-4 h-4" /> Request Rematch
+                </button>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowGameOverModal(false);
+                    onStartAnalysis(game.pgn());
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Analyze
+                </button>
+                <button
+                  onClick={() => setShowGameOverModal(false)}
+                  className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+                >
+                  Board/Chat
+                </button>
+                <button
+                  onClick={onLeave}
+                  className="flex-1 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs border border-rose-600 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Leave
+                </button>
+              </div>
             </div>
           </div>
         </div>

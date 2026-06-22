@@ -111,7 +111,7 @@ export default function PostGameAnalysis({ pgn, onLeave, boardTheme }) {
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         {/* Board Area */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="glass p-3 rounded-2xl relative w-full max-w-[60vh] mx-auto flex-1 min-h-0 flex items-center justify-center">
+          <div className="glass p-3 rounded-2xl relative w-full max-w-[min(100vw,_80vh)] lg:max-w-[65vh] mx-auto flex-1 min-h-0 flex items-center justify-center">
             <div className="flex w-full h-full gap-2" style={{ aspectRatio: '1/1' }}>
               <EvalBar evaluation={evaluation} boardOrientation="white" />
               <div className="flex-1">

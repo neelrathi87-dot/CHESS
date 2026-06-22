@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
+import { playSound } from '../utils/sounds';
 import GameBoard from './GameBoard';
 import { ArrowLeft, CheckCircle2, XCircle, RefreshCw, HelpCircle } from 'lucide-react';
 
@@ -14,6 +15,30 @@ export default function PuzzleMode({ onLeave, boardTheme }) {
   const [puzzleStatus, setPuzzleStatus] = useState('playing'); // 'playing', 'solved', 'failed'
   const [playerColor, setPlayerColor] = useState('white');
   const [lastMove, setLastMove] = useState(null);
+
+  // Play sounds on move
+  const previousFenSoundRef = React.useRef(game.fen());
+
+  useEffect(() => {
+    const currentFen = game.fen();
+    if (previousFenSoundRef.current !== currentFen) {
+      previousFenSoundRef.current = currentFen;
+      
+      const history = game.history({ verbose: true });
+      const moveObj = history.length > 0 ? history[history.length - 1] : null;
+      
+      if (moveObj) {
+        if (game.inCheck()) {
+          playSound('check');
+        } else if (moveObj.captured || moveObj.san?.includes('x')) {
+          playSound('capture');
+        } else {
+          playSound('move');
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.fen()]);
 
   const fetchPuzzle = async () => {
     setLoading(true);
@@ -203,7 +228,7 @@ export default function PuzzleMode({ onLeave, boardTheme }) {
               <p>{error}</p>
             </div>
           ) : (
-            <div className="glass p-3 rounded-2xl relative w-full max-w-[60vh] mx-auto flex-1 min-h-0 flex items-center justify-center">
+            <div className="glass p-3 rounded-2xl relative w-full max-w-[min(100vw,_80vh)] lg:max-w-[65vh] mx-auto flex-1 min-h-0 flex items-center justify-center">
               <div className="w-full" style={{ aspectRatio: '1/1' }}>
                 <GameBoard
                   game={game}

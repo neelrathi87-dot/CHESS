@@ -7,8 +7,9 @@ import InstallGuide from './components/InstallGuide';
 import SettingsModal from './components/SettingsModal';
 import PuzzleMode from './components/PuzzleMode';
 import PostGameAnalysis from './components/PostGameAnalysis';
+import AdminDashboard from './components/AdminDashboard';
 
-import { AlertCircle, RefreshCw, Globe, Search, Palette } from 'lucide-react';
+import { AlertCircle, RefreshCw, Globe, Search, Palette, Shield } from 'lucide-react';
 
 // Socket connection singleton
 let socketInstance = null;
@@ -47,7 +48,7 @@ const getOrCreatePlayerId = () => {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState('lobby'); // 'lobby' | 'arena' | 'puzzle' | 'analysis'
+  const [screen, setScreen] = useState('lobby'); // 'lobby' | 'arena' | 'puzzle' | 'analysis' | 'admin'
   const [game, setGame] = useState(new Chess());
   const [analysisPgn, setAnalysisPgn] = useState(null);
   const [playerColor, setPlayerColor] = useState('white'); // 'white' | 'black' | 'spectator'
@@ -184,6 +185,9 @@ export default function App() {
       const newGame = new Chess();
       newGame.loadPgn(state.pgn || '');
       setGame(newGame);
+      
+      const history = newGame.history({ verbose: true });
+      setLastMove(history.length > 0 ? history[history.length - 1] : null);
       setIsOffline(false);
       setScreen('arena');
       sessionStorage.setItem('chess_room_id', state.id);
@@ -196,6 +200,9 @@ export default function App() {
       const newGame = new Chess();
       newGame.loadPgn(state.pgn || '');
       setGame(newGame);
+
+      const history = newGame.history({ verbose: true });
+      setLastMove(history.length > 0 ? history[history.length - 1] : null);
 
       // Transition screen and save roomId (particularly important for the joining guest player)
       setIsOffline(false);
@@ -224,6 +231,15 @@ export default function App() {
 
     socket.on('drawDeclined', () => {
       showToast('Draw offer declined by opponent.', 'info');
+    });
+
+    socket.on('rematchOffered', () => {
+      showToast('Opponent wants a rematch!', 'info');
+    });
+
+    socket.on('rematchAccepted', () => {
+      showToast('Rematch accepted! Starting new game...', 'success');
+      // The new game state will arrive via the 'gameState' event automatically
     });
 
     socket.on('playerDisconnected', ({ username }) => {
@@ -622,6 +638,15 @@ export default function App() {
     });
   };
 
+  // Request Rematch
+  const handleRequestRematch = () => {
+    if (isOffline || !gameState?.id) return;
+    socket.emit('requestRematch', {
+      roomId: gameState.id,
+      playerId
+    });
+  };
+
   // Send Chat message
   const handleSendMessage = (text) => {
     if (isOffline) return;
@@ -689,6 +714,10 @@ export default function App() {
             onLeave={() => setScreen('lobby')}
             boardTheme={boardTheme}
           />
+        )}
+
+        {screen === 'admin' && (
+          <AdminDashboard onLeave={() => setScreen('lobby')} />
         )}
 
         {screen === 'lobby' && (
@@ -799,6 +828,7 @@ export default function App() {
             onResign={handleResign}
             onOfferDraw={handleOfferDraw}
             onRespondDraw={handleRespondDraw}
+            onRequestRematch={handleRequestRematch}
             onSendMessage={handleSendMessage}
             onLeave={handleLeaveGame}
             playerColor={playerColor}
@@ -846,6 +876,12 @@ export default function App() {
                 {label}
               </a>
             ))}
+            <button
+              onClick={() => setScreen('admin')}
+              className="text-[11px] text-teal-500/50 hover:text-teal-400 transition-colors duration-200 font-sans flex items-center gap-1"
+            >
+              <Shield className="w-3 h-3" /> Admin
+            </button>
           </nav>
         </div>
       </footer>
@@ -859,10 +895,10 @@ export default function App() {
         />
       </div>
 
-      {/* Floating Settings Button in Bottom Left Corner */}
+      {/* Floating Settings Button in Top Left Corner */}
       <button
         onClick={() => setIsSettingsOpen(true)}
-        className="fixed bottom-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
+        className="fixed top-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
       >
         <Palette className="w-5 h-5 group-hover:rotate-12 transition-transform" />
         <span className="hidden md:inline">Themes & Settings</span>

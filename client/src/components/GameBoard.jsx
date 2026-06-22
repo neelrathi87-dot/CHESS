@@ -15,6 +15,7 @@ export default function GameBoard({
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [optionSquares, setOptionSquares] = useState({});
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
+  const [premove, setPremove] = useState(null); // { from, to, promotion? }
   const lastMoveFenRef = useRef(null);
 
 
@@ -37,6 +38,26 @@ export default function GameBoard({
       setOptionSquares({});
     }, 0);
   }, [game]);
+
+  // Execute premove when it becomes our turn
+  useEffect(() => {
+    if (isMyTurn && premove) {
+      const pMove = { ...premove };
+      setPremove(null); // clear immediately so we don't loop
+
+      const moves = game.moves({ square: pMove.from, verbose: true });
+      const validMove = moves.find((m) => m.to === pMove.to);
+      if (validMove) {
+        // execute!
+        if (checkPromotion(pMove.from, pMove.to) && !pMove.promotion) {
+           setPendingPromotion({ from: pMove.from, to: pMove.to });
+        } else {
+           lastMoveFenRef.current = game.fen();
+           onMove({ from: pMove.from, to: pMove.to, promotion: pMove.promotion || 'q' });
+        }
+      }
+    }
+  }, [isMyTurn, premove, game, onMove]);
 
   // Find all legal moves for a square
   const getMoveOptions = (square) => {
@@ -80,7 +101,34 @@ export default function GameBoard({
   };
 
   const onSquareClick = (square) => {
-    if (!isMyTurn) return;
+    // Clear any existing premove if you click anywhere
+    if (premove) setPremove(null);
+
+    // If a promotion is pending, ignore other clicks
+    if (pendingPromotion) return;
+
+    if (!isMyTurn) {
+      // Allow setting a premove via clicks!
+      if (playerColor !== 'spectator') {
+        const piece = game.get(square);
+        const isMyPiece = piece && piece.color === playerColor[0];
+
+        if (selectedSquare === null) {
+          if (isMyPiece) {
+             setSelectedSquare(square);
+             setOptionSquares({
+               [square]: { backgroundColor: 'rgba(239, 68, 68, 0.4)' } // Red highlight for selected premove piece
+             });
+          }
+        } else {
+          // They clicked a target square for the premove
+          setPremove({ from: selectedSquare, to: square });
+          setSelectedSquare(null);
+          setOptionSquares({});
+        }
+      }
+      return;
+    }
 
     // If a promotion is pending, ignore other clicks
     if (pendingPromotion) return;
@@ -144,8 +192,20 @@ export default function GameBoard({
   };
 
   const onPieceDrop = (sourceSquare, targetSquare) => {
-    if (!isMyTurn) return false;
+    if (premove) setPremove(null);
     if (pendingPromotion) return false;
+
+    if (!isMyTurn) {
+      if (playerColor !== 'spectator') {
+         const piece = game.get(sourceSquare);
+         if (piece && piece.color === playerColor[0]) {
+            setPremove({ from: sourceSquare, to: targetSquare });
+         }
+      }
+      setSelectedSquare(null);
+      setOptionSquares({});
+      return false; // snap back, we use highlight instead
+    }
 
     // Check if valid move
     const moves = game.moves({
@@ -208,6 +268,18 @@ export default function GameBoard({
       };
     }
 
+    // 1.5 Premove highlight (red background)
+    if (premove) {
+      styles[premove.from] = {
+        ...styles[premove.from],
+        backgroundColor: 'rgba(239, 68, 68, 0.4)' // Tailwind rose-500
+      };
+      styles[premove.to] = {
+        ...styles[premove.to],
+        backgroundColor: 'rgba(239, 68, 68, 0.5)'
+      };
+    }
+
     // 2. King in check highlight (red pulsing gradient)
     if (game.inCheck()) {
       const currentTurn = game.turn(); // 'w' or 'b'
@@ -239,9 +311,14 @@ export default function GameBoard({
       <Chessboard
         position={game.fen()}
         onPieceDrop={onPieceDrop}
+        onPieceDragBegin={(piece, sourceSquare) => {
+          setSelectedSquare(sourceSquare);
+          getMoveOptions(sourceSquare);
+        }}
         onSquareClick={onSquareClick}
-        arePiecesDraggable={false}
+        arePiecesDraggable={playerColor !== 'spectator'}
         boardOrientation={boardOrientation}
+        showBoardNotation={true}
         customSquareStyles={getCustomSquareStyles()}
         customBoardStyle={{
           borderRadius: '12px',

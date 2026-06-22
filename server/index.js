@@ -38,6 +38,48 @@ app.get('/sockets', async (req, res) => {
 
 const connectedPlayers = new Map(); // socket.id -> playerId
 
+// Admin Secure Endpoint
+app.get('/api/admin/status', (req, res) => {
+  // IP Restriction
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  
+  // Strict matching for requested IP + localhost for dev
+  const isAllowed = 
+    clientIp.includes('10.139.206.2') || 
+    clientIp.includes('127.0.0.1') || 
+    clientIp.includes('::1');
+
+  if (!isAllowed) {
+    return res.status(403).json({ error: 'Access Denied: Unauthorized IP Address' });
+  }
+
+  // Gather stats
+  const rooms = Array.from(roomManager.rooms.values()).map(r => ({
+    id: r.id,
+    status: r.status,
+    players: {
+      white: r.players.white?.username || 'None',
+      black: r.players.black?.username || 'None',
+    },
+    spectators: r.spectators?.length || 0,
+    timeLimit: r.timeLimit / 60000,
+    moves: r.game.history().length
+  }));
+
+  const queue = roomManager.matchQueue.map(q => ({
+    username: q.username,
+    timeLimit: q.timeLimit,
+    joinedAt: q.joinedAt
+  }));
+
+  res.json({
+    activeRooms: rooms,
+    matchQueue: queue,
+    totalSockets: io.engine.clientsCount,
+    uniquePlayers: new Set(connectedPlayers.values()).size
+  });
+});
+
 // Helper to broadcast accurate unique user count
 const broadcastUniquePlayerCount = () => {
   const uniqueIds = new Set(connectedPlayers.values());
@@ -205,7 +247,30 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 6. Resign
+  // 6. Request Rematch
+  socket.on('requestRematch', ({ roomId, playerId }) => {
+    try {
+      const upperRoomId = roomId.trim().toUpperCase();
+      const result = roomManager.requestRematch(upperRoomId, playerId);
+
+      if (result.error) {
+        socket.emit('errorMsg', { message: result.error });
+        return;
+      }
+
+      if (result.accepted) {
+        const state = roomManager.getRoomState(upperRoomId);
+        io.to(upperRoomId).emit('gameState', state);
+        io.to(upperRoomId).emit('rematchAccepted');
+      } else {
+        socket.to(upperRoomId).emit('rematchOffered');
+      }
+    } catch (err) {
+      socket.emit('errorMsg', { message: 'Failed to request rematch.' });
+    }
+  });
+
+  // 7. Resign
   socket.on('resign', ({ roomId, playerId }) => {
     try {
       const upperRoomId = roomId.trim().toUpperCase();

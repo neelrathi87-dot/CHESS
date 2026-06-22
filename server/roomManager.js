@@ -117,12 +117,17 @@ class RoomManager {
       room.players.black = guestPlayer;
       colorAssigned = 'black';
     } else {
-      return { error: 'Room is full.' };
+      // Room is full, join as spectator!
+      if (!room.spectators) room.spectators = [];
+      room.spectators.push(guestPlayer);
+      colorAssigned = 'spectator';
     }
 
-    // Start game since both players have joined
-    room.status = 'playing';
-    room.lastMoveTimestamp = Date.now();
+    // Start game since both players have joined (only if we just added the second player)
+    if (colorAssigned !== 'spectator' && room.players.white && room.players.black && room.status === 'waiting') {
+      room.status = 'playing';
+      room.lastMoveTimestamp = Date.now();
+    }
 
     return { room, success: true, color: colorAssigned };
   }
@@ -396,6 +401,41 @@ class RoomManager {
     }
 
     return message;
+  }
+
+  requestRematch(roomId, playerId) {
+    const room = this.rooms.get(roomId);
+    if (!room || room.status === 'playing') return { error: 'Invalid room state for rematch.' };
+    
+    if (!room.rematchRequests) {
+      room.rematchRequests = new Set();
+    }
+    
+    room.rematchRequests.add(playerId);
+    
+    const wId = room.players.white?.id;
+    const bId = room.players.black?.id;
+    
+    if (wId && bId && room.rematchRequests.has(wId) && room.rematchRequests.has(bId)) {
+      // Both agreed! Reset the room.
+      room.rematchRequests.clear();
+      room.game = new Chess();
+      room.status = 'playing';
+      room.clocks = { white: room.timeLimit, black: room.timeLimit };
+      room.lastMoveTimestamp = Date.now();
+      room.winner = null;
+      room.reason = null;
+      room.drawOfferFrom = null;
+      
+      // Swap colors
+      const oldWhite = room.players.white;
+      room.players.white = room.players.black;
+      room.players.black = oldWhite;
+      
+      return { success: true, accepted: true, room };
+    }
+    
+    return { success: true, accepted: false };
   }
 
   getRoomState(roomId) {
