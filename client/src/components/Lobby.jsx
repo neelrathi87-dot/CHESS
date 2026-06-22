@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap, Gamepad2 } from 'lucide-react';
+import { Monitor, Users, Globe, Swords, Plus, Key, Search, X, GraduationCap, Gamepad2, Zap, ArrowRight } from 'lucide-react';
 
-export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount, onStartLocalGame }) {
+export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, onFindMatch, onCancelSearch, isSearching, onStartLearnMode, onlinePlayersCount, onStartLocalGame, onStartPuzzle }) {
   const [mode, setMode] = useState(() => localStorage.getItem('chess_lobby_mode') || 'local');
   
   // Computer options
@@ -152,6 +152,25 @@ export default function Lobby({ onCreateRoom, onJoinRoom, onStartComputerGame, o
             >
               <GraduationCap className="w-6 h-6" /> Start Learning
             </button>
+            
+            {/* Daily Puzzle Button */}
+            <div className="pt-2">
+              <button
+                onClick={onStartPuzzle}
+                className="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-fuchsia-500/10 to-purple-500/10 hover:from-fuchsia-500/20 hover:to-purple-500/20 border border-fuchsia-500/30 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 group-hover:scale-110 transition-transform">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-bold text-slate-100 group-hover:text-fuchsia-300 transition-colors">Daily Puzzle</h3>
+                    <p className="text-xs text-slate-400">Can you find the winning move?</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-fuchsia-400 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              </button>
+            </div>
           </div>
         ) : mode === 'computer' ? (
           /* VS COMPUTER PANEL */

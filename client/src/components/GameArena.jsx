@@ -26,7 +26,8 @@ export default function GameArena({
   isLearnMode, // boolean - learn mode active
   onUndo, // callback to undo last move
   lastMove, // last move object for evaluation
-  boardTheme // string theme id
+  boardTheme, // string theme id
+  onStartAnalysis // callback to enter analysis mode
 }) {
   const [boardOrientation, setBoardOrientation] = useState(
     isLocalGame ? localBoardOrientation : (playerColor === 'black' ? 'black' : 'white')
@@ -714,14 +715,23 @@ export default function GameArena({
             {/* Action Buttons */}
             <div className="flex gap-2">
               <button
-                onClick={() => setShowGameOverModal(false)}
+                onClick={() => {
+                  setShowGameOverModal(false);
+                  onStartAnalysis(game.pgn());
+                }}
                 className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all flex items-center justify-center gap-1.5"
               >
-                <MessageCircle className="w-4 h-4" /> {isMultiplayer ? 'Chat & Review' : 'Review Game'}
+                <MessageCircle className="w-4 h-4" /> Analyze Game
+              </button>
+              <button
+                onClick={() => setShowGameOverModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+              >
+                Board & Chat
               </button>
               <button
                 onClick={onLeave}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm border border-slate-700 transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm border border-rose-600 transition-all flex items-center justify-center gap-1.5"
               >
                 <LogOut className="w-4 h-4" /> Leave
               </button>

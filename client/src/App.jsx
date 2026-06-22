@@ -5,6 +5,8 @@ import Lobby from './components/Lobby';
 import GameArena from './components/GameArena';
 import InstallGuide from './components/InstallGuide';
 import SettingsModal from './components/SettingsModal';
+import PuzzleMode from './components/PuzzleMode';
+import PostGameAnalysis from './components/PostGameAnalysis';
 
 import { AlertCircle, RefreshCw, Globe, Search, Palette } from 'lucide-react';
 
@@ -45,8 +47,9 @@ const getOrCreatePlayerId = () => {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState('lobby'); // 'lobby' | 'arena'
+  const [screen, setScreen] = useState('lobby'); // 'lobby' | 'arena' | 'puzzle' | 'analysis'
   const [game, setGame] = useState(new Chess());
+  const [analysisPgn, setAnalysisPgn] = useState(null);
   const [playerColor, setPlayerColor] = useState('white'); // 'white' | 'black' | 'spectator'
   const [isOffline, setIsOffline] = useState(true);
   const [onlinePlayersCount, setOnlinePlayersCount] = useState(0);
@@ -672,8 +675,24 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 flex flex-col justify-center py-6">
-        {screen === 'lobby' ? (
-        <div className="relative">
+        
+        {screen === 'puzzle' && (
+          <PuzzleMode
+            onLeave={() => setScreen('lobby')}
+            boardTheme={boardTheme}
+          />
+        )}
+
+        {screen === 'analysis' && (
+          <PostGameAnalysis
+            pgn={analysisPgn}
+            onLeave={() => setScreen('lobby')}
+            boardTheme={boardTheme}
+          />
+        )}
+
+        {screen === 'lobby' && (
+          <div className="relative">
             {/* Connecting to Server Overlay */}
             {connecting && (
               <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-50">
@@ -768,9 +787,12 @@ export default function App() {
               isSearching={isSearching}
               onStartLearnMode={handleStartLearnMode}
               onlinePlayersCount={onlinePlayersCount}
+              onStartPuzzle={() => setScreen('puzzle')}
             />
           </div>
-        ) : (
+        )}
+
+        {screen === 'arena' && (
           <GameArena
             game={game}
             onMove={handleMove}
@@ -792,6 +814,10 @@ export default function App() {
             onUndo={handleUndo}
             lastMove={lastMove}
             boardTheme={boardTheme}
+            onStartAnalysis={(pgn) => {
+              setAnalysisPgn(pgn);
+              setScreen('analysis');
+            }}
           />
         )}
       </main>
