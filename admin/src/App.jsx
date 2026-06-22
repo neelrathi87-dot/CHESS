@@ -4,14 +4,27 @@ import { Shield, Users, Activity, LogOut, RefreshCw, AlertTriangle, Eye, Clock, 
 export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [adminKey, setAdminKey] = useState(localStorage.getItem('adminKey') || '');
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const fetchStatus = async () => {
+    if (!adminKey) return;
+    setLoading(true);
     try {
       const baseUrl = import.meta.env.VITE_SERVER_URL || `http://${window.location.hostname}:5000`;
-      const response = await fetch(`${baseUrl}/api/admin/status`);
+      const response = await fetch(`${baseUrl}/api/admin/status`, {
+        headers: {
+          'x-admin-key': adminKey
+        }
+      });
       
       if (!response.ok) {
+        if (response.status === 401) {
+          setIsAuthorized(false);
+          localStorage.removeItem('adminKey');
+          throw new Error('Access Denied: Invalid Admin Password');
+        }
         if (response.status === 403) {
           throw new Error('Access Denied: Your IP is not authorized to view the admin dashboard.');
         }
@@ -21,6 +34,7 @@ export default function App() {
       const json = await response.json();
       setData(json);
       setError(null);
+      setIsAuthorized(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,11 +43,52 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!adminKey) return;
     fetchStatus();
     // Poll every 5 seconds
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [adminKey]);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const key = e.target.password.value;
+    localStorage.setItem('adminKey', key);
+    setAdminKey(key);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminKey');
+    setAdminKey('');
+    setIsAuthorized(false);
+    setData(null);
+  };
+
+  if (!adminKey || !isAuthorized) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="glass p-8 rounded-3xl max-w-sm w-full border border-teal-500/30">
+          <div className="flex justify-center mb-6">
+            <Shield className="w-16 h-16 text-teal-400 drop-shadow-[0_0_15px_rgba(45,212,191,0.5)]" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-100 text-center mb-6">Admin Login</h2>
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <input 
+              name="password"
+              type="password" 
+              placeholder="Enter Admin Password" 
+              className="px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-slate-200 outline-none focus:border-teal-500 transition-colors"
+              required
+            />
+            <button type="submit" className="px-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-teal-500/20 transition-all">
+              Login
+            </button>
+          </form>
+          {error && <p className="text-rose-400 text-sm text-center mt-4">{error}</p>}
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !data) {
     return (
@@ -61,16 +116,27 @@ export default function App() {
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-teal-500/20 p-3 rounded-2xl border border-teal-500/30 shadow-[0_0_15px_rgba(20,184,166,0.3)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-teal-500/10 rounded-2xl border border-teal-500/20 shadow-[0_0_20px_rgba(45,212,191,0.15)]">
               <Shield className="w-8 h-8 text-teal-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight">Admin Dashboard</h1>
-              <p className="text-sm text-slate-400 font-medium">Real-time Server Monitor</p>
+              <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400 tracking-tight">
+                Live Server Dashboard
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <p className="text-slate-400 text-sm font-medium">Monitoring Real-Time Connections</p>
+              </div>
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 text-slate-300 rounded-xl transition-colors border border-slate-800"
+          >
+            <LogOut className="w-4 h-4" /> Disconnect
+          </button>
         </div>
 
         {/* Top Stats */}
