@@ -898,7 +898,7 @@ export default function App() {
       {/* Floating Settings Button in Top Left Corner */}
       <button
         onClick={() => setIsSettingsOpen(true)}
-        className="fixed top-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
+        className="fixed top-24 md:top-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
       >
         <Palette className="w-5 h-5 group-hover:rotate-12 transition-transform" />
         <span className="hidden md:inline">Themes & Settings</span>
