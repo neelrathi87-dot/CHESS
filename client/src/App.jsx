@@ -7,7 +7,6 @@ import InstallGuide from './components/InstallGuide';
 import SettingsModal from './components/SettingsModal';
 import PuzzleMode from './components/PuzzleMode';
 import PostGameAnalysis from './components/PostGameAnalysis';
-import AdminDashboard from './components/AdminDashboard';
 
 import { AlertCircle, RefreshCw, Globe, Search, Palette, Shield } from 'lucide-react';
 
@@ -48,7 +47,7 @@ const getOrCreatePlayerId = () => {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState('lobby'); // 'lobby' | 'arena' | 'puzzle' | 'analysis' | 'admin'
+  const [screen, setScreen] = useState('lobby'); // 'lobby' | 'arena' | 'puzzle' | 'analysis'
   const [game, setGame] = useState(new Chess());
   const [analysisPgn, setAnalysisPgn] = useState(null);
   const [playerColor, setPlayerColor] = useState('white'); // 'white' | 'black' | 'spectator'
@@ -716,10 +715,6 @@ export default function App() {
           />
         )}
 
-        {screen === 'admin' && (
-          <AdminDashboard onLeave={() => setScreen('lobby')} />
-        )}
-
         {screen === 'lobby' && (
           <div className="relative">
             {/* Connecting to Server Overlay */}
@@ -876,12 +871,6 @@ export default function App() {
                 {label}
               </a>
             ))}
-            <button
-              onClick={() => setScreen('admin')}
-              className="text-[11px] text-teal-500/50 hover:text-teal-400 transition-colors duration-200 font-sans flex items-center gap-1"
-            >
-              <Shield className="w-3 h-3" /> Admin
-            </button>
           </nav>
         </div>
       </footer>
@@ -896,13 +885,15 @@ export default function App() {
       </div>
 
       {/* Floating Settings Button in Top Left Corner */}
-      <button
-        onClick={() => setIsSettingsOpen(true)}
-        className="fixed top-24 md:top-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
-      >
-        <Palette className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-        <span className="hidden md:inline">Themes & Settings</span>
-      </button>
+      {(screen === 'lobby' || screen === 'arena') && (
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="fixed top-24 md:top-4 left-4 z-[100] flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-slate-900/90 border-2 border-teal-500/80 shadow-[0_0_15px_rgba(45,212,191,0.4)] hover:shadow-[0_0_25px_rgba(45,212,191,0.7)] text-teal-400 hover:text-teal-300 text-sm font-bold transition-all group backdrop-blur-md"
+        >
+          <Palette className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          <span className="hidden md:inline">Themes & Settings</span>
+        </button>
+      )}
 
       <SettingsModal 
         isOpen={isSettingsOpen} 

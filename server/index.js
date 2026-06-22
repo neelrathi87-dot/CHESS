@@ -41,17 +41,15 @@ const connectedPlayers = new Map(); // socket.id -> playerId
 // Admin Secure Endpoint
 app.get('/api/admin/status', (req, res) => {
   // IP Restriction
-  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  
-  // Strict matching for requested IP + localhost for dev
-  const isAllowed = 
-    clientIp.includes('10.139.206.2') || 
-    clientIp.includes('127.0.0.1') || 
-    clientIp.includes('::1');
+  // const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  // const isAllowed = 
+  //   clientIp.includes('10.139.206.2') || 
+  //   clientIp.includes('127.0.0.1') || 
+  //   clientIp.includes('::1');
 
-  if (!isAllowed) {
-    return res.status(403).json({ error: 'Access Denied: Unauthorized IP Address' });
-  }
+  // if (!isAllowed) {
+  //   return res.status(403).json({ error: 'Access Denied: Unauthorized IP Address' });
+  // }
 
   // Gather stats
   const rooms = Array.from(roomManager.rooms.values()).map(r => ({

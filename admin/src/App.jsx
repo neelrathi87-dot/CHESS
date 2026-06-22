@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, Activity, LogOut, RefreshCw, AlertTriangle, Eye, Clock, Hash } from 'lucide-react';
 
-export default function AdminDashboard({ onLeave }) {
+export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export default function AdminDashboard({ onLeave }) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
         <RefreshCw className="w-12 h-12 text-teal-500 animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-slate-200">Verifying Admin Credentials...</h2>
+        <h2 className="text-xl font-bold text-slate-200">Connecting to Server...</h2>
       </div>
     );
   }
@@ -49,14 +49,8 @@ export default function AdminDashboard({ onLeave }) {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6">
         <div className="glass p-8 rounded-3xl max-w-md w-full text-center border border-rose-500/30">
           <AlertTriangle className="w-16 h-16 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-rose-400 mb-2">Access Blocked</h2>
+          <h2 className="text-2xl font-bold text-rose-400 mb-2">Connection Error</h2>
           <p className="text-slate-300 text-sm mb-6 leading-relaxed">{error}</p>
-          <button
-            onClick={onLeave}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold border border-slate-700 transition-all flex items-center justify-center gap-2"
-          >
-            <LogOut className="w-4 h-4" /> Return to Lobby
-          </button>
         </div>
       </div>
     );
@@ -77,12 +71,6 @@ export default function AdminDashboard({ onLeave }) {
               <p className="text-sm text-slate-400 font-medium">Real-time Server Monitor</p>
             </div>
           </div>
-          <button
-            onClick={onLeave}
-            className="px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold border border-slate-700 transition-all flex items-center gap-2"
-          >
-            <LogOut className="w-4 h-4" /> Exit Admin
-          </button>
         </div>
 
         {/* Top Stats */}
