@@ -4,6 +4,7 @@ import GameBoard from './GameBoard';
 import MoveHistory from './MoveHistory';
 import ChatBox from './ChatBox';
 import LearnAssistant from './LearnAssistant';
+import EvalBar from './EvalBar';
 
 export default function GameArena({
   game,
@@ -24,7 +25,8 @@ export default function GameArena({
   onTickOfflineClock, // callback to decrement clock
   isLearnMode, // boolean - learn mode active
   onUndo, // callback to undo last move
-  lastMove // last move object for evaluation
+  lastMove, // last move object for evaluation
+  boardTheme // string theme id
 }) {
   const [boardOrientation, setBoardOrientation] = useState(
     isLocalGame ? localBoardOrientation : (playerColor === 'black' ? 'black' : 'white')
@@ -35,6 +37,86 @@ export default function GameArena({
   const [showDrawConfirm, setShowDrawConfirm] = useState(false);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const prevStatusRef = useRef('playing');
+
+  // 🔊 Audio Manager
+  const audioContextRef = useRef(null);
+  useEffect(() => {
+    audioContextRef.current = {
+      move: new Audio('/sounds/move.mp3'),
+      capture: new Audio('/sounds/capture.mp3'),
+      check: new Audio('/sounds/check.mp3'),
+      gameEnd: new Audio('/sounds/game-end.mp3')
+    };
+  }, []);
+
+  const playSound = (type) => {
+    if (audioContextRef.current && audioContextRef.current[type]) {
+      const audio = audioContextRef.current[type];
+      audio.currentTime = 0;
+      audio.play().catch(() => {}); // catch autoplay blocks
+    }
+  };
+
+  // 📊 Evaluation Engine Worker
+  const [evaluation, setEvaluation] = useState('0.0');
+  const evalWorkerRef = useRef(null);
+  const currentFenRef = useRef(game.fen());
+
+  useEffect(() => {
+    evalWorkerRef.current = new Worker('/stockfish.js');
+    evalWorkerRef.current.onmessage = (e) => {
+      const msg = e.data;
+      if (typeof msg === 'string' && msg.includes('score')) {
+        const scoreMatch = msg.match(/score (cp|mate) (-?\d+)/);
+        if (scoreMatch) {
+          const type = scoreMatch[1];
+          const val = parseInt(scoreMatch[2], 10);
+          
+          const fenTokens = currentFenRef.current.split(' ');
+          const isWhiteToMove = fenTokens[1] === 'w';
+          
+          if (type === 'cp') {
+            const scoreInPawns = val / 100;
+            const finalScore = isWhiteToMove ? scoreInPawns : -scoreInPawns;
+            setEvaluation(finalScore.toFixed(1));
+          } else if (type === 'mate') {
+            if (val === 0) return;
+            const mateIn = isWhiteToMove ? val : -val;
+            setEvaluation(mateIn > 0 ? `M${mateIn}` : `-M${Math.abs(mateIn)}`);
+          }
+        }
+      }
+    };
+    
+    return () => {
+      evalWorkerRef.current?.terminate();
+    };
+  }, []);
+
+  // Update Evaluation on every move
+  useEffect(() => {
+    currentFenRef.current = game.fen();
+    // Only evaluate if playing and not in learn mode (learn mode has its own evaluation)
+    if (evalWorkerRef.current && prevStatusRef.current === 'playing' && !isLearnMode) {
+      evalWorkerRef.current.postMessage('stop');
+      evalWorkerRef.current.postMessage('uci');
+      evalWorkerRef.current.postMessage(`position fen ${game.fen()}`);
+      evalWorkerRef.current.postMessage('go depth 12');
+    }
+  }, [game.fen(), isLearnMode]);
+
+  // Play sound on move
+  useEffect(() => {
+    if (!lastMove) return;
+    if (game.inCheck()) {
+      playSound('check');
+    } else if (lastMove.captured || lastMove.san?.includes('x')) {
+      playSound('capture');
+    } else {
+      playSound('move');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastMove]);
 
   const handlePieceSelect = (square) => {
     setSelectedSquare(square);
@@ -73,7 +155,10 @@ export default function GameArena({
   // Show game over modal when status changes to a game-over state
   useEffect(() => {
     if (isGameOver && prevStatusRef.current === 'playing') {
-      setTimeout(() => setShowGameOverModal(true), 500);
+      setTimeout(() => {
+        playSound('gameEnd');
+        setShowGameOverModal(true);
+      }, 500);
     }
     prevStatusRef.current = status;
   }, [status, isGameOver]);
@@ -345,15 +430,22 @@ export default function GameArena({
 
           {/* Board Rendering - flex-1 to fill available space */}
           <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0">
-            <div className="w-full max-w-[min(100%,_60vh)] mx-auto" style={{ aspectRatio: '1/1' }}>
-                          <GameBoard
-                game={game}
-                onMove={onMove}
-                onPieceSelect={handlePieceSelect}
-                playerColor={playerColor}
-                boardOrientation={boardOrientation}
-                interactive={status === 'playing'}
-              />
+            <div className="flex w-full max-w-[min(100%,_60vh)] mx-auto gap-2" style={{ aspectRatio: '1/1' }}>
+              {/* Eval Bar (Only if not learn mode, since learn mode is guided) */}
+              {!isLearnMode && (
+                <EvalBar evaluation={evaluation} boardOrientation={boardOrientation} />
+              )}
+              <div className="flex-1">
+                <GameBoard
+                  game={game}
+                  onMove={onMove}
+                  onPieceSelect={handlePieceSelect}
+                  playerColor={playerColor}
+                  boardOrientation={boardOrientation}
+                  interactive={status === 'playing'}
+                  boardTheme={boardTheme}
+                />
+              </div>
             </div>
           </div>
 

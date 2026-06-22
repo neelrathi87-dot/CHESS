@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import GameArena from './components/GameArena';
 import InstallGuide from './components/InstallGuide';
+import SettingsModal from './components/SettingsModal';
 
 import { AlertCircle, RefreshCw, Globe, Search } from 'lucide-react';
 
@@ -75,6 +76,16 @@ export default function App() {
   // PWA install prompt
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  // Theme State
+  const [boardTheme, setBoardTheme] = useState(() => {
+    return localStorage.getItem('boardTheme') || 'slate';
+  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('boardTheme', boardTheme);
+  }, [boardTheme]);
 
   // Capture browser's install prompt event
   useEffect(() => {
@@ -771,7 +782,6 @@ export default function App() {
             playerColor={playerColor}
             gameState={gameState}
             isOffline={isOffline}
-            isOffline={isOffline}
             isLocalGame={isLocalGame}
             localPlayers={localPlayers}
             localBoardOrientation={localBoardOrientation}
@@ -781,6 +791,7 @@ export default function App() {
             isLearnMode={isLearnMode}
             onUndo={handleUndo}
             lastMove={lastMove}
+            boardTheme={boardTheme}
           />
         )}
       </main>
@@ -795,6 +806,12 @@ export default function App() {
           </p>
           {/* Right: links */}
           <nav className="flex items-center gap-5">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors duration-200 font-sans"
+            >
+              Settings
+            </button>
             {[
               { label: 'Terms',        href: '/terms.html' },
               { label: 'Privacy',      href: '/privacy.html' },
@@ -821,6 +838,13 @@ export default function App() {
           onInstallApp={handleInstallApp}
         />
       </div>
+
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        currentTheme={boardTheme}
+        onThemeChange={setBoardTheme}
+      />
     </div>
   );
 }

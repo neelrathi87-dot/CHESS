@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Chessboard } from 'react-chessboard';
-
+import { getThemeColors } from './SettingsModal';
 
 export default function GameBoard({
   game,
@@ -9,7 +9,8 @@ export default function GameBoard({
   onPieceSelect, // optional callback: (square, piece) => void — used by Learn Mode
   playerColor, // 'white', 'black', or 'spectator'
   boardOrientation, // 'white' or 'black'
-  interactive // boolean (true if it's the player's turn)
+  interactive, // boolean (true if it's the player's turn)
+  boardTheme // string theme id
 }) {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [optionSquares, setOptionSquares] = useState({});
@@ -231,6 +232,8 @@ export default function GameBoard({
     return styles;
   };
 
+  const themeColors = getThemeColors(boardTheme || 'slate');
+
   return (
     <div className="relative w-full max-w-[560px] aspect-square select-none mx-auto">
       <Chessboard
@@ -245,8 +248,8 @@ export default function GameBoard({
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6)',
           border: '1px solid rgba(255, 255, 255, 0.08)'
         }}
-        customDarkSquareStyle={{ backgroundColor: '#2d3748' }} // sleek slate-800
-        customLightSquareStyle={{ backgroundColor: '#718096' }} // soft steel slate-500
+        customDarkSquareStyle={{ backgroundColor: themeColors.dark }}
+        customLightSquareStyle={{ backgroundColor: themeColors.light }}
       />
 
       {/* Pawn Promotion Selection Modal Overlay */}
