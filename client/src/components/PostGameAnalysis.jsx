@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import GameBoard from './GameBoard';
 import EvalBar from './EvalBar';
-import { ArrowLeft, ChevronLeft, ChevronRight, FastForward, Rewind, Activity } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, FastForward, Rewind, Activity, Download } from 'lucide-react';
 
 export default function PostGameAnalysis({ pgn, onLeave, boardTheme }) {
   const [game, setGame] = useState(new Chess());
@@ -80,31 +80,54 @@ export default function PostGameAnalysis({ pgn, onLeave, boardTheme }) {
   }, [game.fen()]);
 
   const goToMove = (index) => {
-    if (index < 0) index = 0;
-    if (index > history.length) index = history.length;
+    if (index < 0 || index > history.length) return;
     
-    const newGame = new Chess();
-    for (let i = 0; i < index; i++) {
-      newGame.move(history[i]);
-    }
-    setGame(newGame);
     setCurrentMoveIndex(index);
+    const tempGame = new Chess();
+    for (let i = 0; i < index; i++) {
+      tempGame.move(history[i]);
+    }
+    setGame(tempGame);
+  };
+
+  const handleDownloadPGN = () => {
+    if (!pgn) return;
+    const blob = new Blob([pgn], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chess_game_${new Date().getTime()}.pgn`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-6 min-h-[100dvh] flex flex-col">
       {/* Header */}
-      <div className="flex justify-between items-center bg-slate-900/60 px-4 py-3 rounded-xl border border-slate-800 shrink-0 mb-4">
-        <button
-          onClick={onLeave}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-sm font-semibold"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Lobby
-        </button>
+      <div className="grid grid-cols-3 items-center bg-slate-900/60 px-4 py-3 rounded-xl border border-slate-800 shrink-0 mb-4">
+        <div className="flex">
+          <button
+            onClick={onLeave}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors text-sm font-semibold"
+          >
+            <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Back to Lobby</span>
+          </button>
+        </div>
 
-        <div className="flex items-center gap-2 text-slate-200">
+        <div className="flex items-center justify-center gap-2 text-slate-200">
           <Activity className="w-5 h-5 text-indigo-400" />
-          <h1 className="font-bold">Post-Game Analysis</h1>
+          <h1 className="font-bold text-center hidden sm:block">Post-Game Analysis</h1>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleDownloadPGN}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 transition-colors text-sm font-semibold border border-teal-500/30"
+          >
+            <Download className="w-4 h-4" /> <span className="hidden sm:inline">Download PGN</span>
+          </button>
         </div>
       </div>
 
