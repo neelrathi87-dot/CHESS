@@ -425,7 +425,7 @@ export default function GameArena({
 
           {/* Board Rendering - flex-1 to fill available space */}
           <div className="glass p-2 sm:p-3 rounded-2xl relative flex-1 flex items-center justify-center min-h-0">
-            <div className="flex w-full max-w-[min(100vw,_80vh)] lg:max-w-[min(100%,_65vh)] mx-auto gap-2">
+            <div className="flex w-full h-full max-w-[min(100vw,_80vh)] lg:max-w-[min(100%,_65vh)] mx-auto gap-2 items-stretch" style={{ aspectRatio: '1/1' }}>
               {/* Eval Bar (Only if not learn mode, since learn mode is guided) */}
               {!isLearnMode && (
                 <EvalBar evaluation={evaluation} boardOrientation={boardOrientation} />

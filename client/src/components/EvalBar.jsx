@@ -7,49 +7,53 @@ export default function EvalBar({ evaluation, boardOrientation = 'white' }) {
   if (typeof evaluation === 'string' && (evaluation.includes('M') || evaluation.includes('m'))) {
     const isWhiteMate = !evaluation.startsWith('-'); // M3 means white has mate, -M2 means black
     whitePercent = isWhiteMate ? 100 : 0;
-    displayScore = evaluation;
+    displayScore = evaluation.replace('-', '').toUpperCase();
   } else {
     // Normal numeric evaluation
     const score = parseFloat(evaluation) || 0;
     // Cap at +10 / -10
     const clamped = Math.max(-10, Math.min(10, score));
-    // Non-linear mapping makes small advantages visible but caps out at large advantages
-    // A standard formula is: 50 + 50 * (2 / (1 + e^(-0.2*score)) - 1)
-    // Or simpler: 50 + (clamped / 10) * 50
     whitePercent = 50 + (clamped / 10) * 50;
     
-    displayScore = score > 0 ? `+${score.toFixed(1)}` : score.toFixed(1);
+    // Display absolute value because the position of the badge represents the advantage
+    displayScore = Math.abs(score).toFixed(1);
     if (score === 0) displayScore = '0.0';
   }
 
   // If board is flipped, the visual representation is flipped (white at top)
   const isFlipped = boardOrientation === 'black';
 
+  // Determine if the score should be shown at the top or bottom of the bar
+  const showAtTop = (!isFlipped && whitePercent < 50) || (isFlipped && whitePercent >= 50);
+
   return (
-    <div className="w-4 md:w-6 h-full bg-slate-800 rounded-lg overflow-hidden flex flex-col border border-slate-700/50 shadow-inner relative select-none">
-      {/* Black section (top normally) */}
-      <div 
-        className="w-full bg-[#3f3f3f] transition-all duration-700 ease-out flex items-start justify-center pt-1 overflow-hidden"
-        style={{ height: `${isFlipped ? whitePercent : (100 - whitePercent)}%` }}
-      >
-        {(!isFlipped ? (whitePercent < 50) : (whitePercent >= 50)) && (
-          <span className="text-[9px] md:text-[10px] font-bold text-slate-400 transform origin-top break-words leading-none" style={{ writingMode: 'vertical-rl' }}>
-            {displayScore.replace('-', '')}
-          </span>
-        )}
+    <div className="w-5 md:w-8 h-full relative select-none shrink-0">
+      {/* Visual Bar Wrapper with rounded corners and overflow hidden */}
+      <div className="absolute inset-0 bg-slate-800 rounded-lg overflow-hidden flex flex-col border border-slate-700/50 shadow-inner">
+        {/* Black section (normally top) */}
+        <div 
+          className="w-full bg-[#2a2a2a] transition-all duration-700 ease-out"
+          style={{ height: `${isFlipped ? whitePercent : (100 - whitePercent)}%` }}
+        />
+
+        {/* White section (normally bottom) */}
+        <div 
+          className="w-full bg-[#e1e1e1] transition-all duration-700 ease-out"
+          style={{ height: `${isFlipped ? (100 - whitePercent) : whitePercent}%` }}
+        />
       </div>
 
-      {/* White section (bottom normally) */}
+      {/* Floating Score Badge Overlay (outside overflow-hidden wrapper so it can hang over slightly) */}
       <div 
-        className="w-full bg-[#e5e5e5] transition-all duration-700 ease-out flex items-end justify-center pb-1 overflow-hidden"
-        style={{ height: `${isFlipped ? (100 - whitePercent) : whitePercent}%` }}
+        className={`absolute left-1/2 -translate-x-1/2 flex justify-center z-10 pointer-events-none transition-all duration-500 ${
+          showAtTop ? 'top-1.5' : 'bottom-1.5'
+        }`}
       >
-        {(!isFlipped ? (whitePercent >= 50) : (whitePercent < 50)) && (
-          <span className="text-[9px] md:text-[10px] font-bold text-slate-600 transform origin-bottom break-words leading-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-            {displayScore}
-          </span>
-        )}
+        <span className="bg-slate-950/90 text-slate-200 text-[10px] md:text-xs font-extrabold font-mono px-1.5 py-0.5 rounded-md border border-slate-700/60 shadow-lg shadow-black/50 tracking-tighter leading-none whitespace-nowrap">
+          {displayScore}
+        </span>
       </div>
     </div>
   );
 }
+
