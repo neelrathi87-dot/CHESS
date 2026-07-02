@@ -35,6 +35,7 @@ export default function PostGameAnalysis({ pgn, onLeave, boardTheme }) {
   // Setup Stockfish worker
   useEffect(() => {
     evalWorkerRef.current = new Worker('/stockfish.js');
+    evalWorkerRef.current.postMessage('uci'); // Initialize UCI protocol once
     evalWorkerRef.current.onmessage = (e) => {
       const msg = e.data;
       if (typeof msg === 'string' && msg.includes('score')) {
@@ -71,13 +72,18 @@ export default function PostGameAnalysis({ pgn, onLeave, boardTheme }) {
 
   // Evaluate current position
   useEffect(() => {
+    if (currentMoveIndex === 0) {
+      setEvaluation('0.0');
+      evalWorkerRef.current?.postMessage('stop');
+      return;
+    }
+
     if (evalWorkerRef.current) {
       evalWorkerRef.current.postMessage('stop');
-      evalWorkerRef.current.postMessage('uci');
       evalWorkerRef.current.postMessage(`position fen ${game.fen()}`);
       evalWorkerRef.current.postMessage('go depth 14');
     }
-  }, [game.fen()]);
+  }, [game.fen(), currentMoveIndex]);
 
   const goToMove = (index) => {
     if (index < 0 || index > history.length) return;

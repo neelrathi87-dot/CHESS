@@ -48,6 +48,7 @@ export default function GameArena({
 
   useEffect(() => {
     evalWorkerRef.current = new Worker('/stockfish.js');
+    evalWorkerRef.current.postMessage('uci'); // Initialize UCI protocol once
     evalWorkerRef.current.onmessage = (e) => {
       const msg = e.data;
       if (typeof msg === 'string' && msg.includes('score')) {
@@ -80,10 +81,17 @@ export default function GameArena({
   // Update Evaluation on every move
   useEffect(() => {
     currentFenRef.current = game.fen();
+    
+    // Hardcode starting position to 0.0 to avoid startup engine fluctuations or incorrect cached evals
+    if (game.history().length === 0) {
+      setEvaluation('0.0');
+      evalWorkerRef.current?.postMessage('stop');
+      return;
+    }
+
     // Only evaluate if playing and not in learn mode (learn mode has its own evaluation)
     if (evalWorkerRef.current && prevStatusRef.current === 'playing' && !isLearnMode) {
       evalWorkerRef.current.postMessage('stop');
-      evalWorkerRef.current.postMessage('uci');
       evalWorkerRef.current.postMessage(`position fen ${game.fen()}`);
       evalWorkerRef.current.postMessage('go depth 12');
     }

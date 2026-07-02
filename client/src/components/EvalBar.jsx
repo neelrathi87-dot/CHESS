@@ -2,22 +2,24 @@ export default function EvalBar({ evaluation, boardOrientation = 'white' }) {
   // evaluation is expected to be a number (e.g. 1.5, -0.8) or string if mate (e.g. 'M3', '-M2')
   
   let whitePercent = 50;
-  let displayScore = '0.0';
+  let displayScore = '50%';
 
   if (typeof evaluation === 'string' && (evaluation.includes('M') || evaluation.includes('m'))) {
     const isWhiteMate = !evaluation.startsWith('-'); // M3 means white has mate, -M2 means black
     whitePercent = isWhiteMate ? 100 : 0;
-    displayScore = evaluation.replace('-', '').toUpperCase();
+    displayScore = '100%';
   } else {
     // Normal numeric evaluation
     const score = parseFloat(evaluation) || 0;
-    // Cap at +10 / -10
-    const clamped = Math.max(-10, Math.min(10, score));
-    whitePercent = 50 + (clamped / 10) * 50;
     
-    // Display absolute value because the position of the badge represents the advantage
-    displayScore = Math.abs(score).toFixed(1);
-    if (score === 0) displayScore = '0.0';
+    // Convert pawn score to win percentage for White
+    // If score is positive, White has advantage (>50%)
+    // If score is negative, Black has advantage (<50%)
+    const winPercent = 50 + 50 * (2 / (1 + Math.exp(-0.324 * score)) - 1);
+    whitePercent = winPercent;
+    
+    // Display the winning side's percentage (always >= 50%)
+    displayScore = `${Math.round(Math.max(winPercent, 100 - winPercent))}%`;
   }
 
   // If board is flipped, the visual representation is flipped (white at top)
