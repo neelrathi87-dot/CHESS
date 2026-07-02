@@ -4,7 +4,8 @@ const THEMES = [
   { id: 'slate', name: 'Slate (Default)', light: '#718096', dark: '#2d3748' },
   { id: 'classic', name: 'Classic Wood', light: '#f0d9b5', dark: '#b58863' },
   { id: 'emerald', name: 'Emerald Green', light: '#ecfdf5', dark: '#10b981' },
-  { id: 'midnight', name: 'Midnight', light: '#475569', dark: '#0f172a' }
+  { id: 'midnight', name: 'Midnight', light: '#475569', dark: '#0f172a' },
+  { id: 'blue', name: 'Ocean Blue', light: '#eef2f7', dark: '#4b7399' }
 ];
 
 export const getThemeColors = (id) => {
