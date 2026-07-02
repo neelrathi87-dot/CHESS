@@ -217,6 +217,16 @@ export default function App() {
       }
     });
 
+    socket.on('chatMessage', (message) => {
+      setGameState((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          chat: [...(prev.chat || []), message]
+        };
+      });
+    });
+
     socket.on('joinedSuccess', ({ color }) => {
       if (color) {
         setPlayerColor(color);
